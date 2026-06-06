@@ -304,7 +304,7 @@ function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
 // ====== Connection Manager (Multi-source) ======
 const DOMAINS = {
-  ws: ['stream.binance.com:9443','stream.binance.io:9443'],
+  ws: ['stream.binance.com:443','stream.binance.io:443','stream.binance.com:9443','stream.binance.io:9443'],
   rest: ['api.binance.com','www.binance.com','api.binance.io','api1.binance.com','api2.binance.com','api3.binance.com'],
   mexc: ['api.mexc.com'],
   huobi: ['api.huobi.pro'],
@@ -341,15 +341,25 @@ async function connect(){
         }}
       }catch(e){}
     } else if (manual === 'ws') {
+      // Try WebSocket first, then fallback to REST
       for(let i=0;i<DOMAINS.ws.length;i++){
         const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
+        status('busy','WS ('+(i+1)+'/'+DOMAINS.ws.length+')');
         const ok=await tryWS(url);
-        if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');connected=true;break}
+        if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');connected=true;break}
+      }
+      if(!connected){
+        status('busy','WS失败,尝试REST...');
+        for(let i=0;i<DOMAINS.rest.length;i++){
+          const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
+          const data=await tryREST(url);
+          if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');connected=true;break}
+        }
       }
     } else if (manual === 'rest') {
       for(let i=0;i<DOMAINS.rest.length;i++){
         const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-        status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
+        status('busy','REST ('+(i+1)+'/'+DOMAINS.rest.length+')');
         const data=await tryREST(url);
         if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');connected=true;break}
       }
@@ -370,59 +380,31 @@ async function connect(){
   }
 
   // Auto mode: try sources in order
-  // Phase 1: Binance WebSocket (no CORS issues, works with VPN)
-  for(let i=0;i<DOMAINS.ws.length;i++){
-    const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
-    status('busy','连接 Binance WS... ('+(i+1)+'/'+DOMAINS.ws.length+')');
-    const ok=await tryWS(url);
-    if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');S.dataSource='ws';return}
-  }
-
-  // Phase 2: Binance REST
-  for(let i=0;i<DOMAINS.rest.length;i++){
+  // Phase 1: Binance REST API (standard HTTPS, CORS supported, most reliable)
+  for(let i=0;i<Math.min(DOMAINS.rest.length,3);i++){
     const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-    status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
+    status('busy','Binance REST... ('+(i+1)+'/3)');
     const data=await tryREST(url);
     if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
   }
 
+  // Phase 2: Binance WebSocket (fast but port 9443 may be blocked)
+  for(let i=0;i<DOMAINS.ws.length;i++){
+    const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
+    status('busy','Binance WS... ('+(i+1)+'/'+DOMAINS.ws.length+')');
+    const ok=await tryWS(url);
+    if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');S.dataSource='ws';return}
+  }
+
   // Phase 3: CoinGecko (CORS-friendly)
-  status('busy','连接 CoinGecko...');
+  status('busy','CoinGecko...');
   if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
-
-  // Phase 4: Local proxy (127.0.0.1:3456)
-  status('busy','检查本地代理...');
-  try{
-    const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
-    if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
-      processBinance(d);initConnected("proxy","🚀 本地代理","mode-rest");
-      if(S.restTimer)clearInterval(S.restTimer);
-      S.restTimer=setInterval(async()=>{if(!S.paused)try{const r2=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),5000);return c.signal})(new AbortController())});if(r2.ok)processBinance(await r2.json())}catch(e){}},5000);
-      return
-    }}
-  }catch(e){}
-
-  // Phase 5: MEXC (may have CORS issues from browser)
-  status('busy','尝试 MEXC...');
-  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');S.dataSource='mexc';return}
-  
-  // Phase 6: Huobi/HTX
-  status('busy','尝试 Huobi...');
-  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');S.dataSource='huobi';return}
-
-  // Phase 7: OKX
-  status('busy','尝试 OKX...');
-  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');S.dataSource='okx';return}
-
-  // Phase 8: Gate.io
-  status('busy','尝试 Gate.io...');
-  if(await tryGateio()){initConnected('gateio','🟢 Gate.io','mode-cg');S.dataSource='gateio';return}
 
   // All failed
   status('off','❌ 全部失败');
   setMode('连接失败','mode-err');
   $('reconnectBtn').style.display='';
-  $('loadingMsg').innerHTML='⚠️ 全部失败 · 可手动选择数据源重试';
+  $('loadingMsg').innerHTML='⚠️ 全部失败 · 试试手动选「📡 Binance REST」或「⚡ Binance WS」';
 }function initConnected(mode,label,cls){
   S.connected=true;S.dataSource=mode;
   status('on','已连接');setMode(label,cls);
@@ -951,7 +933,11 @@ function stopTimers(){if(S.alertTimer){clearInterval(S.alertTimer);S.alertTimer=
 
 document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';$('newsPanel').style.display='none';S.currentTab='watchlist';renderWatchlist()}else if(t==='news'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='none';$('newsPanel').style.display='';S.currentTab='news';renderNews()}else if(t==='trending'){$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab='trending';fetchTrending()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab=t;render()}})});
 document.addEventListener('click',e=>{const l=e.target.closest('.sym-link');if(!l)return;e.preventDefault();addWatch(l.dataset.sym)});
-$('reconnectBtn').addEventListener('click',function(){if(S.currentTab==='trending'){fetchTrending()}else{connect()}});
+$('reconnectBtn').addEventListener('click',function(){
+  if(S.currentTab==='trending'){fetchTrending()}
+  else if(S.currentTab==='news'){S.news=null;renderNews()}
+  else{connect()}
+});
 $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textContent=S.paused?'▶ 继续':'⏸ 暂停'});
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
