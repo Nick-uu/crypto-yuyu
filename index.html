@@ -536,8 +536,27 @@ function renderWatchlist(){
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render();clrSuggest()}
-function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+function addWatch(sym){
+  if(!sym||!S.symbols[sym])return;
+  for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===sym)return}
+  var sd=S.symbols[sym];
+  S.watchlist.push({sym:sym,avgPrice:sd.price||0});
+  saveWatch();
+  var wl=$('watchlistBody');
+  if(S.currentTab==='watchlist'){
+    renderWatchlist();
+    updateBadges();
+  }
+  render();
+  $('watchSearch').value='';
+  $('watchSuggestions').style.display='none';
+}
+function removeWatch(sym){
+  var nw=[];for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym!==sym)nw.push(S.watchlist[j])}
+  S.watchlist=nw;saveWatch();
+  if(S.currentTab==='watchlist'){renderWatchlist();updateBadges()}
+  render()
+}
 function clrSuggest(){$('watchSuggestions').style.display='none';$('watchSearch').value=''}
 function watchInput(){
   const v=($('watchSearch').value||'').trim().toUpperCase();
@@ -551,11 +570,18 @@ function watchInput(){
 }
 function watchAdd(){
   const v=($('watchSearch').value||'').trim().toUpperCase();if(!v)return;
-  const exact=v.slice(-4)==='USDT'?v:v+'USDT';
-  if(S.symbols[exact]){addWatch(exact);return}
+  // Build USDT symbol
+  const sym=v.endsWith('USDT')?v:v+'USDT';
+  if(S.symbols[sym]){addWatch(sym);return}
+  // Try partial match
   const matches=Object.keys(S.symbols).filter(s=>s.includes(v));
   if(matches.length===1){addWatch(matches[0]);return}
-  watchInput();
+  if(matches.length>1){watchInput();return}
+  // Show suggestions even if no match
+  const box=$('watchSuggestions');
+  box.style.display='block';
+  box.innerHTML='<div style="padding:10px;color:#8b949e;font-size:12px;text-align:center">未找到: '+v+'</div>';
+  setTimeout(()=>box.style.display='none',2000);
 }
 
 
