@@ -68,6 +68,17 @@ tr.predict-high td{background:rgba(210,168,255,0.04)}
 .toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:4px}
 .toast{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 12px;font-size:12px;max-width:280px;box-shadow:0 6px 16px rgba(0,0,0,.4);animation:fadeIn .2s}
 .toast.buy{border-color:#3fb950}.toast.sell{border-color:#f85149}.toast.pred{border-color:#d2a8ff}
+.news-item{padding:8px 4px;border-bottom:1px solid #1c2128;animation:fadeIn .2s}
+.news-item:hover{background:rgba(255,255,255,0.015)}
+.news-time{color:#484f58;font-size:10px;min-width:52px;display:inline-block}
+.news-cat{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;margin:0 4px}
+.news-cat-listing{background:rgba(63,185,80,0.15);color:#3fb950}
+.news-cat-news{background:rgba(56,139,253,0.15);color:#58a6ff}
+.news-cat-event{background:rgba(210,168,255,0.15);color:#d2a8ff}
+.news-cat-delist{background:rgba(248,81,73,0.15);color:#f85149}
+.news-cat-default{background:#21262d;color:#8b949e}
+.news-title{color:#c9d1d9;font-size:11px;cursor:pointer;text-decoration:none;display:block;line-height:1.4}
+.news-title:hover{color:#58a6ff}
 footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262d;text-align:center}
 </style></head><body>
 
@@ -104,6 +115,8 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <div class="tab-btn" data-tab="buy">🚀 买入加速 <span class="badge" id="buyBadge">--</span></div>
 <div class="tab-btn" data-tab="sell">📉 卖出压力 <span class="badge" id="sellBadge">--</span></div>
 <div class="tab-btn" data-tab="watchlist">👁 自选 <span class="badge" id="watchBadge">0</span></div>
+<div class="tab-btn" data-tab="trending">🔥 热搜</div>
+<div class="tab-btn" data-tab="news">📰 快讯</div>
 </div>
 
 <div class="table-wrap" id="tableWrap">
@@ -125,6 +138,17 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
 <tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名或搜索添加自选</div></td></tr></tbody></table></div></div></div>
+</div></div>
+
+<div id="newsPanel" style="display:none">
+<div style="padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;font-size:12px;color:#8b949e;display:flex;justify-content:space-between">
+<span>📰 币圈快讯</span>
+<span id="newsCount" style="color:#484f58">加载中...</span>
+</div>
+<div id="newsBody" style="padding:4px 12px;max-height:400px;overflow-y:auto;font-size:11px;scrollbar-width:thin;scrollbar-color:#30363d transparent">
+<div style="color:#484f58;text-align:center;padding:20px">加载新闻中...</div>
+</div>
+</div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -149,6 +173,76 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
+
+// ---- CoinGecko Trending ----
+function fetchTrending(){
+  if(S.trendingData)return; // Already fetched
+  fetch('https://api.coingecko.com/api/v3/search/trending',{signal:(c=>{setTimeout(()=>c.abort(),10000);return c.signal})(new AbortController())})
+    .then(r=>r.json()).then(d=>{
+    if(!d.coins||!d.coins.length)return;
+    S.trendingData=d;
+    // Add trending score to symbols
+    for(let i=0;i<d.coins.length;i++){
+      const c=d.coins[i].item;
+      const sym=(c.symbol||'').toUpperCase()+'USDT';
+      if(S.symbols[sym])S.symbols[sym].trendingScore=(d.coins.length-i);
+    }
+    if(S.currentTab==='trending')render();
+  }).catch(()=>{});
+}
+
+// ---- Binance News ----
+function renderNews(){
+  const bd=$('newsBody');
+  if(S.news&&S.news.length){
+    $('newsCount').textContent=S.news.length+'条';
+    let h='';
+    for(const n of S.news){
+      const ts=new Date(n.t);
+      const time=ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0');
+      let cat='default',catName='';
+      if(n.c===48){cat='listing';catName='上新'}else if(n.c===49){cat='news';catName='公告'}else if(n.c===93){cat='event';catName='活动'}else if(n.c===161){cat='delist';catName='下架'}else if(n.c===157){cat='default';catName='维护'}
+      const url='https://www.binance.com/en/support/announcement/detail/'+n.cd;
+      h+='<div class="news-item"><span class="news-time">'+time+'</span><span class="news-cat news-cat-'+cat+'">'+catName+'</span><a class="news-title" href="'+url+'" target="_blank" rel="noopener">'+n.tt+'</a></div>';
+    }
+    bd.innerHTML=h;
+    $('newsCount').textContent=S.news.length+'条';
+  } else {
+    bd.innerHTML='<div style="color:#484f58;text-align:center;padding:20px">加载中...</div>';
+    $('newsCount').textContent='加载中...';
+    // Fetch news
+    fetch('https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageSize=30&pageNo=1',{signal:(c=>{setTimeout(()=>c.abort(),10000);return c.signal})(new AbortController())})
+      .then(r=>r.json()).then(d=>{
+      if(!d.data||!d.data.catalogs)return;
+      const arts=[];
+      for(const cat of d.data.catalogs){
+        for(const a of cat.articles){
+          arts.push({tt:a.title,cd:a.code,t:a.releaseDate,c:cat.catalogId});
+        }
+      }
+      arts.sort((a,b)=>b.t-a.t);
+      S.news=arts.slice(0,50);
+      const bd2=$('newsBody');let h='';
+      for(const n of S.news){
+        const ts=new Date(n.t);
+        const time=ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0');
+        let cat='default',catName='';
+        if(n.c===48){cat='listing';catName='上新'}else if(n.c===49){cat='news';catName='公告'}else if(n.c===93){cat='event';catName='活动'}else if(n.c===161){cat='delist';catName='下架'}else if(n.c===157){cat='default';catName='维护'}
+        const url='https://www.binance.com/en/support/announcement/detail/'+n.cd;
+        h+='<div class="news-item"><span class="news-time">'+time+'</span><span class="news-cat news-cat-'+cat+'">'+catName+'</span><a class="news-title" href="'+url+'" target="_blank" rel="noopener">'+n.tt+'</a></div>';
+      }
+      bd2.innerHTML=h;
+      $('newsCount').textContent=S.news.length+'条';
+    }).catch(()=>{$('newsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:20px">加载失败</div>';$('newsCount').textContent='加载失败'});
+  }
+}
+
+// ---- Trending sort in getRanking ----
+function getRankingTrending(){
+  let e=Object.entries(S.symbols).filter(([sym,s])=>s.trendingScore>0);
+  e.sort((a,b)=>(b[1].trendingScore||0)-(a[1].trendingScore||0));
+  return e.slice(0,parseInt($('displayCount').value)||50);
+}
 function loadSource(){try{const d=localStorage.getItem('predSource');if(d)S.manualSource=d;$('dataSource').value=S.manualSource}catch(e){}}
 function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
@@ -616,6 +710,7 @@ function spark(sym){
 function getRanking(mode){
   const l=parseInt($('displayCount').value)||50,mv=parseFloat($('minVolFilter').value)||0,pc=parseFloat($('priceCap').value)||99999,mp=parseFloat($('minPredScore').value)||0;
   let e=Object.entries(S.symbols).filter(([sym,s])=>s.quoteVol>=mv&&s.price<=pc);
+  if(mode==='trending'){return getRankingTrending()}
   if(mode==='buy'){e=e.filter(([sym,s])=>s.buyScore>0);e.sort((a,b)=>(b[1].buyScore||0)-(a[1].buyScore||0))}
   else if(mode==='sell'){e=e.filter(([sym,s])=>s.sellScore>0);e.sort((a,b)=>(b[1].sellScore||0)-(a[1].sellScore||0))}
   else{e=e.filter(([sym,s])=>(s.predictScore||0)>=mp);e.sort((a,b)=>{const d=(b[1].predictScore||0)-(a[1].predictScore||0);return Math.abs(d)<5?(b[1].buyScore||0)-(a[1].buyScore||0):d})}
@@ -790,7 +885,7 @@ function toast(t,m){const d=document.createElement('div');d.className='toast '+t
 function startTimers(){stopTimers();S.alertTimer=setInterval(checkAlerts,6000);S.klineTimer=setInterval(updateKlines,35000)}
 function stopTimers(){if(S.alertTimer){clearInterval(S.alertTimer);S.alertTimer=null}if(S.klineTimer){clearInterval(S.klineTimer);S.klineTimer=null}}
 
-document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';S.currentTab='watchlist';renderWatchlist()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';S.currentTab=t;render()}})});
+document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';$('newsPanel').style.display='none';S.currentTab='watchlist';renderWatchlist()}else if(t==='news'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='none';$('newsPanel').style.display='';S.currentTab='news';renderNews()}else if(t==='trending'){$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab='trending';fetchTrending();render()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab=t;render()}})});
 document.addEventListener('click',e=>{const l=e.target.closest('.sym-link');if(!l)return;e.preventDefault();addWatch(l.dataset.sym)});
 $('reconnectBtn').addEventListener('click',connect);
 $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textContent=S.paused?'▶ 继续':'⏸ 暂停'});
