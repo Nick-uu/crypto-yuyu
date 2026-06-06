@@ -118,9 +118,15 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none">
+<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center">
+<input id="watchSearch" type="text" placeholder="输入币名搜索添加" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
+<button id="watchAddBtn" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
+</div>
+<div style="position:relative"><div id="watchSuggestions" style="display:none;position:absolute;top:0;left:0;right:0;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100"></div>
+<div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
-<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
+<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">搜索或点击币名加入自选</div></td></tr></tbody></table></div></div></div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -530,7 +536,38 @@ function renderWatchlist(){
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+
+// ---- Watchlist search ----
+function watchInput(){
+  var v=($('watchSearch').value||'').toUpperCase().trim();
+  var box=$('watchSuggestions');
+  if(!v||!S.connected){box.style.display='none';return}
+  var all=Object.keys(S.symbols);var matches=[];
+  for(var i=0;i<all.length;i++){
+    if(!all[i].includes(v))continue;
+    var dup=false;for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===all[i]){dup=true;break}}
+    if(!dup)matches.push(all[i]);
+    if(matches.length>=15)break;
+  }
+  if(!matches.length){box.style.display='none';return}
+  box.style.display='block';
+  var tmp='';
+  for(var i=0;i<matches.length;i++){tmp=tmp+'<div class="ws-item" data-sym="'+matches[i]+'" style="padding:5px 10px;font-size:12px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d">'+matches[i].replace('USDT','')+'</div>'}
+  box.innerHTML=tmp;
+  var items=box.children;
+  for(var i=0;i<items.length;i++){
+    (function(el){el.onclick=function(){addWatch(el.getAttribute('data-sym'))}})(items[i]);
+  }
+}
+function watchDoAdd(){
+  var v=($('watchSearch').value||'').toUpperCase().trim();if(!v)return;
+  var sym=v;if(sym.slice(-4)!=='USDT')sym=sym+'USDT';
+  if(S.symbols[sym]){addWatch(sym);$('watchSearch').value='';$('watchSuggestions').style.display='none';return}
+  var all=Object.keys(S.symbols);var match=null;
+  for(var i=0;i<all.length;i++){if(all[i].includes(v)){match=all[i];break}}
+  if(match){addWatch(match);$('watchSearch').value='';$('watchSuggestions').style.display='none';return}
+  watchInput();
+}function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 
 
