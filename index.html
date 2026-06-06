@@ -95,7 +95,10 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 </div>
 
 <div class="info-bar">
-<span>账户: ~300 RMB ($42)</span><span>信号 <strong id="sigCount">0</strong></span><span>K线 <strong id="klineCount">0</strong></span>
+<span id="btcInfo" style="font-weight:600">BTC --</span>
+<span id="marketSentiment">涨跌比 --</span>
+<span>信号 <strong id="sigCount">0</strong></span>
+<span>K线 <strong id="klineCount">0</strong></span>
 <span id="topMover" style="flex:1;text-align:right"></span>
 </div>
 
@@ -504,6 +507,11 @@ function render(){
   }
   tb.innerHTML=h;
   if(r.length>0){const[sym,s]=r[0];$('topMover').innerHTML='🔮 首: <strong>'+sym.replace('USDT','')+'</strong> 分'+(s.predictScore||0)+' '+fmtC(s.change)}
+  const btc=S.symbols['BTCUSDT'];
+  if(btc){$('btcInfo').innerHTML='BTC <span class="'+(btc.change>=0?'text-up':'text-down')+'">'+fmtP(btc.price)+' '+fmtC(btc.change)+'</span>'}
+  let up=0,dn=0;
+  for(const[s2,o]of Object.entries(S.symbols)){if(o.change>0.1)up++;else if(o.change<-0.1)dn++}
+  $('marketSentiment').innerHTML='涨跌比 <strong class="'+(up>=dn?'text-up':'text-down')+'">'+up+':'+dn+'</strong>';
 }
 
 function updateBadges(){$('buyBadge').textContent=getRanking('buy').length;$('sellBadge').textContent=getRanking('sell').length;$('predBadge').textContent=Object.entries(S.symbols).filter(([sym,s])=>(s.predictScore||0)>=(parseFloat($('minPredScore').value)||0)).length;$('sigCount').textContent=getRanking('buy').length+getRanking('sell').length}
