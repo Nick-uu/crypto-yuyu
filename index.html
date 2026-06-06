@@ -121,7 +121,13 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none">
+<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center">
+<input id="watchSearch" type="text" placeholder="输入币名搜索添加" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
+<button id="watchAddBtn" onclick="watchDoAdd()" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
+</div>
+<div id="watchSuggestions" style="display:none;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;font-size:12px;margin:0 16px"></div>
+<div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
 <tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
 
