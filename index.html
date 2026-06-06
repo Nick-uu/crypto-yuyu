@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto YUYU鱼鱼</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+header{background:#161b22;border-bottom:1px solid #30363d;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+header h1{font-size:18px;font-weight:600}
+header h1 span{color:#d2a8ff}
+.status-bar{font-size:12px;color:#8b949e;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.on{background:#3fb950;box-shadow:0 0 6px #3fb95088}
+.dot.off{background:#f85149}
+.dot.busy{background:#d29922}
+.controls{background:#161b22;border-bottom:1px solid #30363d;padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.controls label{font-size:12px;color:#8b949e}
+.controls input,.controls select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:5px 8px;font-size:12px;outline:none}
+.controls input:focus,.controls select:focus{border-color:#d2a8ff}
+.controls button{background:#238636;border:none;border-radius:6px;color:#fff;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:500}
+.controls button:hover{background:#2ea043}
+.controls button.gray{background:#21262d;color:#c9d1d9;font-size:12px;padding:5px 14px;border:none;border-radius:6px;cursor:pointer}
+.controls button.gray:hover{background:#30363d}
+
+.info-bar{display:flex;gap:12px;padding:8px 20px;background:#0d1117;border-bottom:1px solid #21262d;flex-wrap:wrap;font-size:12px;color:#8b949e;align-items:center}
+.info-bar .val{color:#f0f6fc;font-weight:600}
+
+.tab-bar{display:flex;background:#161b22;border-bottom:1px solid #30363d;padding:0 20px;gap:0;overflow-x:auto}
+.tab-btn{padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;color:#8b949e;border-bottom:2px solid transparent;user-select:none;white-space:nowrap}
+.tab-btn:hover{color:#f0f6fc}
+.tab-btn.active{color:#f0f6fc;border-bottom-color:#d2a8ff}
+.tab-btn .badge{display:inline-block;background:#21262d;padding:1px 7px;border-radius:8px;font-size:11px;margin-left:4px}
+
+.table-wrap{padding:6px 16px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:6px 8px;text-align:right;font-weight:600;color:#8b949e;border-bottom:1px solid #30363d;white-space:nowrap;position:sticky;top:0;background:#0d1117;z-index:1}
+th:first-child{text-align:center;width:28px}
+td{padding:4px 8px;text-align:right;border-bottom:1px solid #1c2128;white-space:nowrap;vertical-align:middle;transition:background 0.2s}
+td:first-child{text-align:center;color:#484f58;font-weight:600}
+td:nth-child(2){text-align:left;font-weight:600}
+td:nth-child(2) a{color:#58a6ff;text-decoration:none;cursor:pointer}
+td:nth-child(2) a:hover{text-decoration:underline}
+tr:hover td{background:rgba(255,255,255,0.015)}
+tr.sig-buy td{background:rgba(63,185,80,0.03)}
+tr.sig-sell td{background:rgba(248,81,73,0.03)}
+tr.watched td{border-left:2px solid #d2a8ff}
+tr.predict-high td{background:rgba(210,168,255,0.04)}
+.rank-top3{color:#d2a8ff}
+.rank-top10{color:#3fb950}
+.text-up{color:#3fb950}
+.text-down{color:#f85149}
+.text-muted{color:#8b949e}
+.text-highlight{color:#d2a8ff}
+
+.tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:600}
+.tag-buy{background:rgba(63,185,80,0.15);color:#3fb950}
+.tag-sell{background:rgba(248,81,73,0.15);color:#f85149}
+.tag-neutral{background:#21262d;color:#8b949e}
+.tag-predict{background:rgba(210,168,255,0.15);color:#d2a8ff;font-weight:700}
+
+.pred-bar{display:inline-block;height:10px;border-radius:2px;min-width:2px;vertical-align:middle;margin-right:3px}
+
+.err-banner{display:none;padding:10px 20px;background:#4a1a1a;border-bottom:1px solid #f85149;font-size:13px;color:#f85149;text-align:center}
+
+.alerts-wrap{margin:6px 16px 12px;background:#161b22;border:1px solid #30363d;border-radius:6px}
+.alerts-header{padding:7px 12px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:#8b949e}
+.alerts-body{padding:4px 12px;max-height:120px;overflow-y:auto;font-size:11px}
+.alerts-body::-webkit-scrollbar{width:5px}
+.alerts-body::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+.alert-line{padding:2px 0;border-bottom:1px solid #1c2128;display:flex;gap:6px;animation:fadeIn .2s}
+.alert-line:last-child{border-bottom:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.alert-time{color:#484f58;min-width:44px}
+.alert-label{font-weight:600;min-width:50px}
+.alert-label.buy{color:#3fb950}
+.alert-label.sell{color:#f85149}
+.alert-label.pred{color:#d2a8ff}
+
+.toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:4px}
+.toast{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 12px;font-size:12px;max-width:280px;box-shadow:0 6px 16px rgba(0,0,0,.4);animation:fadeIn .2s}
+.toast.buy{border-color:#3fb950}
+.toast.sell{border-color:#f85149}
+.toast.pred{border-color:#d2a8ff}
+
+.help-box{display:none;margin:12px 16px;padding:14px 16px;background:#161b22;border:1px solid #d29922;border-radius:8px;font-size:13px;line-height:1.6}
+.help-box a{color:#58a6ff}
+footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262d;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔮 Crypto <span>YUYU鱼鱼</span></h1>
+  <div class="status-bar">
+    <span class="dot off" id="statusDot"></span>
+    <span id="statusText">正在连接...</span>
+    <button id="reconnectBtn" style="display:none;font-size:11px;padding:2px 10px;background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;cursor:pointer">重新连接</button>
+    <span id="coinCount" style="margin-left:8px"></span>
+  </div>
+</header>
+
+<div class="controls">
+  <label>最小成交额</label>
+  <select id="minVolFilter">
+    <option value="0">不限</option><option value="10000">$10K</option><option value="100000">$100K</option>
+    <option value="500000" selected>$500K</option><option value="1000000">$1M</option>
+  </select>
+  <label>币价上限</label>
+  <select id="priceCap">
+    <option value="99999">不限</option><option value="10">$10</option>
+    <option value="5" selected>$5</option><option value="1">$1</option><option value="0.1">$0.1</option>
+  </select>
+  <label>最小预测分</label>
+  <select id="minPredScore">
+    <option value="0">不限</option><option value="30">30+</option><option value="50" selected>50+</option>
+    <option value="70">70+</option><option value="85">85+</option>
+  </select>
+  <label>显示</label>
+  <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
+  <button id="pauseBtn" class="gray">⏸ 暂停</button>
+  <button id="clearBtn" class="gray">清除</button>
+</div>
+
+<div id="errorBanner" class="err-banner"></div>
+
+<div class="info-bar">
+  <span>账户: ~300 RMB ($42)</span>
+  <span>信号 <strong id="sigCount">0</strong></span>
+  <span>K线 <strong id="klineCount">0</strong></span>
+  <span id="topMover" style="flex:1;text-align:right"></span>
+</div>
+
+<div class="tab-bar">
+  <div class="tab-btn active" data-tab="predict">🔮 预测排行 <span class="badge" id="predBadge">--</span></div>
+  <div class="tab-btn" data-tab="buy">🚀 买入加速 <span class="badge" id="buyBadge">--</span></div>
+  <div class="tab-btn" data-tab="sell">📉 卖出压力 <span class="badge" id="sellBadge">--</span></div>
+  <div class="tab-btn" data-tab="watchlist">👁 自选 <span class="badge" id="watchBadge">0</span></div>
+</div>
+
+<div id="helpBox" class="help-box"></div>
+
+<div class="table-wrap" id="tableWrap">
+  <div id="loadingMsg" style="color:#484f58;text-align:center;padding:50px;font-size:14px">🔄 正在连接币安行情服务器...</div>
+  <table id="mainTable" style="display:none">
+    <thead>
+      <tr>
+        <th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th>
+        <th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div id="watchlistPanel" style="display:none">
+  <div class="table-wrap" style="padding:0">
+    <table>
+      <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
+      <tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">自选为空<br>点击排行榜币名添加</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="alerts-wrap">
+  <div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
+  <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+<footer>数据: Binance WS !miniTicker@arr + REST 5m K线 · 指标: MA5/10/20 RSI14 量比 · 预测仅供参考</footer>
+
+<script>
+// ====== State ======
+const S = {
+  ws: null, connected: false, paused: false,
+  symbols: {}, snapshots: [], klines: {}, klineFetching: new Set(),
+  alerts: [], lastAlertKeys: {},
+  watchlist: [], currentTab: 'predict',
+  alertTimer: null, klineTimer: null, reconnectTimer: null, connTimeout: null,
+  reconnAttempts: 0, started: false,
+};
+const $ = id => document.getElementById(id);
+const WS_URL = 'wss://stream.binance.com:9443/ws/!miniTicker@arr';
+const ALT_WS_URL = 'wss://stream.binance.io:9443/ws/!miniTicker@arr';
+let currentUrl = WS_URL;
+
+// ====== Storage ======
+function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
+function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
+
+// ====== Format ======
+const fmtP = v => {if(v==null)return'--';const n=parseFloat(v);if(n<0.00001)return'$'+n.toFixed(8);if(n<0.001)return'$'+n.toFixed(6);if(n<1)return'$'+n.toFixed(4);if(n<50)return'$'+n.toFixed(2);return'$'+n.toLocaleString(undefined,{maxFractionDigits:2,minFractionDigits:2})};
+const fmtV = v => {if(!v)return'$0';const n=parseFloat(v);if(n>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+n.toFixed(0)};
+const fmtC = v => (v>=0?'+':'')+v.toFixed(2)+'%';
+const fmtA = v => {if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s'};
+
+// ====== WebSocket ======
+function connect(url){
+  if(S.ws){try{S.ws.close()}catch(e){}S.ws=null}
+  if(S.connTimeout){clearTimeout(S.connTimeout);S.connTimeout=null}
+  S.started=true;
+  $('statusDot').className='dot busy';
+  $('statusText').textContent='正在连接...';
+  $('reconnectBtn').style.display='none';
+  $('errorBanner').style.display='none';
+  $('helpBox').style.display='none';
+
+  const u = url || currentUrl;
+  try {
+    S.ws = new WebSocket(u);
+  } catch(e) {
+    showError('WebSocket 创建失败: ' + e.message + '。请检查网络或切换浏览器。');
+    $('reconnectBtn').style.display='';
+    return;
+  }
+
+  // Connection timeout: 12 seconds
+  S.connTimeout = setTimeout(() => {
+    if(!S.connected){
+      if(S.ws){try{S.ws.close()}catch(e){}}
+      $('statusDot').className='dot off';
+      $('statusText').textContent='连接超时';
+      $('reconnectBtn').style.display='';
+      showError('连接币安服务器超时。如果是国内网络，可能需要科学上网，或尝试以下方法：');
+      const hb = $('helpBox');
+      hb.innerHTML = '💡 <b>连接不上？试试：</b><br>1️⃣ 刷新页面重试<br>2️⃣ 用 Chrome 浏览器打开<br>3️⃣ 开启 VPN / 科学上网后刷新<br>4️⃣ 如果都不行，去 <a href="https://www.coingecko.com" target="_blank">CoinGecko</a> 手动看数据';
+      hb.style.display='';
+      $('loadingMsg').textContent='⚠️ 连接失败，请点击右上角"重新连接"或刷新页面';
+    }
+  }, 12000);
+
+  S.ws.onopen = () => {
+    S.connected = true;
+    S.reconnAttempts = 0;
+    if(S.connTimeout){clearTimeout(S.connTimeout);S.connTimeout=null}
+    $('statusDot').className='dot on';
+    $('statusText').textContent='已连接';
+    $('reconnectBtn').style.display='none';
+    $('errorBanner').style.display='none';
+    $('helpBox').style.display='none';
+    $('loadingMsg').style.display='none';
+    $('mainTable').style.display='';
+    startTimers();
+    // Initial kline fetch after 3 seconds
+    setTimeout(()=>updateKlines(), 3000);
+  };
+
+  S.ws.onmessage = (e) => {
+    if(S.paused) return;
+    try {
+      const data = JSON.parse(e.data);
+      if(Array.isArray(data)) process(data);
+    } catch(err) {}
+  };
+
+  S.ws.onclose = () => {
+    S.connected = false;
+    if(S.connTimeout){clearTimeout(S.connTimeout);S.connTimeout=null}
+    stopTimers();
+    $('statusDot').className='dot off';
+    if(S.started){
+      // Don't show error if we already have data
+      if(Object.keys(S.symbols).length === 0){
+        $('statusText').textContent = '连接断开';
+        S.reconnAttempts++;
+        if(S.reconnAttempts >= 3){
+          currentUrl = ALT_WS_URL;
+        }
+      } else {
+        $('statusText').textContent = '已断开，尝试重连...';
+      }
+      if(S.reconnectTimer) clearTimeout(S.reconnectTimer);
+      S.reconnectTimer = setTimeout(() => connect(), 3000);
+    }
+  };
+
+  S.ws.onerror = () => {
+    // onclose will fire after this, so we handle it there
+  };
+}
+
+// ====== Process miniTicker ======
+function process(arr){
+  const now = Date.now();
+  let count = 0;
+
+  for(const t of arr){
+    const sym = t.s;
+    if(!sym || !sym.endsWith('USDT')) continue;
+
+    const price = parseFloat(t.c) || 0;
+    const open = parseFloat(t.o) || 0;
+    const change = open > 0 ? ((price - open) / open) * 100 : 0;
+    const qVol = parseFloat(t.q) || 0;
+    const vol = parseFloat(t.v) || 0;
+
+    count++;
+    if(!S.symbols[sym]){
+      S.symbols[sym] = {price, change, vol, quoteVol: qVol, prevVol: 0, velocity: 0, surge: 0, surgePct: 0, volChange: 0, priceTrend: 0, buyScore: 0, sellScore: 0, signal: 'neutral', predictScore: 0};
+    }
+    const s = S.symbols[sym];
+    const pVol = s.vol || 0;
+    s.price = price;
+    s.change = change;
+    s.vol = vol;
+    s.quoteVol = qVol;
+
+    const dVol = vol - pVol;
+    if(dVol > 0) s.velocity = (s.velocity || 0) * 0.5 + dVol * 0.5;
+  }
+
+  takeSnapshot(now);
+  calcScores();
+  render();
+}
+
+// ====== Snapshots (1min window) ======
+function takeSnapshot(now){
+  const snap = {time: now, data: {}};
+  for(const [sym, s] of Object.entries(S.symbols)) snap.data[sym] = {vol: s.quoteVol, price: s.price};
+  S.snapshots.push(snap);
+  const cut = now - 65000;
+  while(S.snapshots.length && S.snapshots[0].time < cut) S.snapshots.shift();
+}
+
+function calcScores(){
+  if(S.snapshots.length < 2) return;
+  const r = S.snapshots[S.snapshots.length - 1], o = S.snapshots[0];
+  const el = (r.time - o.time) / 1000;
+  if(el < 1) return;
+
+  for(const [sym, s] of Object.entries(S.symbols)){
+    const rd = r.data[sym], od = o.data[sym];
+    if(!rd || !od) continue;
+    const dVol = rd.vol - od.vol;
+    const dP = rd.price - od.price;
+    s.volChange = dVol;
+    s.priceTrend = dP > 0 ? 1 : dP < 0 ? -1 : 0;
+    if(el > 0 && od.vol > 0){ s.surge = dVol / el; s.surgePct = (dVol / od.vol) * 100; }
+    else { s.surge = 0; s.surgePct = 0; }
+
+    const vf = Math.max(0, Math.min(s.surgePct / 10, 20));
+    const cf = s.change > 0 ? Math.min(s.change * 1.5, 30) : s.change < 0 ? Math.min(Math.abs(s.change) * 1.5, 30) : 0;
+    const sf = Math.max(0, Math.min((Math.log10(Math.max(s.quoteVol, 1)) - 4) * 3, 15));
+    const pf = s.price < 5 ? 10 : s.price < 10 ? 5 : 0;
+
+    if(s.surgePct > 0.5 && s.priceTrend > 0){ s.buyScore = vf + cf + sf + pf; s.signal = 'buy'; }
+    else { s.buyScore = 0; }
+
+    if(s.surgePct > 0.5 && s.priceTrend < 0 && s.change < 3){ s.sellScore = vf + Math.abs(cf) + sf + pf; s.signal = 'sell'; }
+    else { s.sellScore = 0; }
+
+    if(!s.buyScore && !s.sellScore) s.signal = 'neutral';
+    else if(s.buyScore >= s.sellScore && s.buyScore > 0) s.signal = 'buy';
+    else if(s.sellScore > s.buyScore) s.signal = 'sell';
+  }
+}
+
+// ====== Kline Fetching ======
+async function fetchKlines(sym, interval = '5m', limit = 30){
+  try {
+    const url = 'https://api.binance.com/api/v3/klines?symbol=' + sym + '&interval=' + interval + '&limit=' + limit;
+    const r = await fetch(url);
+    if(!r.ok) return null;
+    const d = await r.json();
+    return d.map(k => ({time: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5])}));
+  } catch(e) { return null; }
+}
+
+function calcMA(data, period){
+  if(!data || data.length < period) return null;
+  return data.slice(-period).reduce((a,b) => a + b.close, 0) / period;
+}
+
+function calcRSI(data, period){
+  period = period || 14;
+  if(!data || data.length < period + 1) return 50;
+  const closes = data.map(d => d.close);
+  let gains = 0, losses = 0;
+  for(let i = closes.length - period; i < closes.length; i++){
+    const d = closes[i] - closes[i - 1];
+    if(d > 0) gains += d; else losses -= d;
+  }
+  if(losses === 0) return 100;
+  const rs = gains / losses;
+  return 100 - 100 / (1 + rs);
+}
+
+function calcPredictScore(data){
+  if(!data || data.length < 15) return 0;
+  const close = data[data.length - 1].close;
+  const ma5 = calcMA(data, 5), ma10 = calcMA(data, 10), ma20 = calcMA(data, 20);
+  const rsi = calcRSI(data, 14);
+  const v5 = data.slice(-5).reduce((a,b) => a + b.volume, 0) / 5;
+  const v10 = data.slice(-10, -5).reduce((a,b) => a + b.volume, 0) / 5;
+  const volRatio = v10 > 0 ? v5 / v10 : 1;
+  let score = 0;
+  if(ma5 !== null && ma10 !== null && ma5 > ma10) score += 15;
+  if(ma10 !== null && ma20 !== null && ma10 > ma20) score += 10;
+  if(ma5 !== null && close > ma5 * 1.001) score += 8;
+  if(ma20 !== null && close > ma20 * 1.002) score += 7;
+  if(volRatio > 1.8) score += 15;
+  else if(volRatio > 1.3) score += 10;
+  else if(volRatio > 1.1) score += 5;
+  if(rsi < 30) score += 20;
+  else if(rsi < 40) score += 15;
+  else if(rsi < 50) score += 10;
+  else if(rsi < 60) score += 5;
+  else if(rsi > 75) score -= 15;
+  else if(rsi > 70) score -= 8;
+  const mom5 = data.length >= 6 ? (close - data[data.length - 6].close) / close * 100 : 0;
+  if(mom5 > 3) score += 15;
+  else if(mom5 > 1.5) score += 10;
+  else if(mom5 > 0) score += 5;
+  else if(mom5 < -2) score -= 5;
+  if(v5 > 0){
+    const vRatio = data[data.length - 1].volume / v5;
+    if(vRatio > 3) score += 10;
+    else if(vRatio > 2) score += 6;
+    else if(vRatio > 1.5) score += 3;
+  }
+  const prices10 = data.slice(-10);
+  const rangeHigh = Math.max(...prices10.map(d => d.high));
+  const rangeLow = Math.min(...prices10.map(d => d.low));
+  const posInRange = rangeHigh - rangeLow > 0 ? (close - rangeLow) / (rangeHigh - rangeLow) : 0.5;
+  if(posInRange < 0.2 && volRatio > 1.5) score += 10;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+async function updateKlines(){
+  if(!S.connected || S.paused) return;
+  // Get top coins by buy score + current predict score
+  const entries = Object.entries(S.symbols)
+    .filter(([sym, s]) => s.quoteVol >= 50000)
+    .sort((a,b) => (b[1].buyScore || 0) + (b[1].predictScore || 0) - (a[1].buyScore || 0) - (a[1].predictScore || 0));
+  const top = entries.slice(0, 15);
+  const results = await Promise.allSettled(top.map(([sym]) => {
+    if(S.klineFetching.has(sym)) return Promise.resolve(null);
+    S.klineFetching.add(sym);
+    return fetchKlines(sym).then(data => {
+      if(data) { S.klines[sym] = data; if(S.symbols[sym]) S.symbols[sym].predictScore = calcPredictScore(data); }
+    }).finally(() => S.klineFetching.delete(sym));
+  }));
+  $('klineCount').textContent = Object.keys(S.klines).length;
+  render();
+}
+
+function sparklineSVG(sym){
+  const data = S.klines[sym];
+  if(!data || data.length < 2) return '';
+  const w = 76, h = 26;
+  const prices = data.map(d => d.close);
+  const min = Math.min(...prices), max = Math.max(...prices), range = max - min || 1;
+  const up = prices[prices.length - 1] >= prices[0];
+  const pts = prices.map((p, i) => (i / (prices.length - 1)) * w + ',' + (h - ((p - min) / range) * (h - 4) - 2)).join(' ');
+  const vols = data.map(d => d.volume); const maxV = Math.max(...vols) || 1;
+  let bars = '';
+  for(let i = 0; i < vols.length; i++){
+    const bw = Math.max(0.5, w / vols.length - 0.3), bh = (vols[i] / maxV) * 7;
+    bars += '<rect x="' + ((i / vols.length) * w - bw/2) + '" y="' + (h - bh) + '" width="' + bw + '" height="' + bh + '" fill="' + (up ? '#3fb95022' : '#f8514922') + '"/>';
+  }
+  const gid = 'g' + sym.replace(/[^a-z0-9]/gi,'');
+  return '<svg width="80" height="28" viewBox="0 0 ' + w + ' ' + h + '"><defs><linearGradient id="' + gid + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="' + (up ? '#3fb95044' : '#f8514944') + '"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>' + bars + '<polyline points="' + pts + '" fill="none" stroke="' + (up ? '#3fb950' : '#f85149') + '" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><polygon points="' + pts + ' ' + w + ',' + h + ' 0,' + h + '" fill="url(#' + gid + ')"/></svg>';
+}
+
+// ====== Ranking ======
+function getRanking(mode){
+  const limit = parseInt($('displayCount').value) || 50;
+  const minVol = parseFloat($('minVolFilter').value) || 0;
+  const priceCap = parseFloat($('priceCap').value) || 99999;
+  const minPred = parseFloat($('minPredScore').value) || 0;
+
+  let entries = Object.entries(S.symbols).filter(([sym, s]) => s.quoteVol >= minVol && s.price <= priceCap);
+
+  if(mode === 'buy'){
+    entries = entries.filter(([sym, s]) => s.buyScore > 0);
+    entries.sort((a,b) => (b[1].buyScore || 0) - (a[1].buyScore || 0));
+  } else if(mode === 'sell'){
+    entries = entries.filter(([sym, s]) => s.sellScore > 0);
+    entries.sort((a,b) => (b[1].sellScore || 0) - (a[1].sellScore || 0));
+  } else {
+    // predict
+    entries = entries.filter(([sym, s]) => (s.predictScore || 0) >= minPred);
+    entries.sort((a,b) => {
+      const diff = (b[1].predictScore || 0) - (a[1].predictScore || 0);
+      if(Math.abs(diff) < 5) return (b[1].buyScore || 0) - (a[1].buyScore || 0);
+      return diff;
+    });
+  }
+  return entries.slice(0, limit);
+}
+
+// ====== Render ======
+function render(){
+  const tab = S.currentTab;
+  if(tab === 'watchlist'){ renderWatchlist(); updateBadges(); return; }
+  const ranking = getRanking(tab);
+  updateBadges();
+  if(!ranking.length){
+    $('tableBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:#484f58;padding:30px">暂无数据。等待数据积累...<br>(需要约30秒)</td></tr>';
+    return;
+  }
+
+  const tbody = $('tableBody');
+  const maxSurge = ranking.length > 0 ? Math.max(Math.abs(ranking[0][1].surge || 1), 1) : 1;
+  let html = '';
+
+  for(let i = 0; i < ranking.length; i++){
+    const [sym, s] = ranking[i];
+    const base = sym.replace('USDT', '');
+    const isBuy = s.signal === 'buy', isSell = s.signal === 'sell';
+    const score = s.predictScore || 0;
+    const predClass = score >= 70 ? 'predict-high' : score >= 50 ? 'sig-buy' : '';
+    const isWatched = S.watchlist.some(w => w.sym === sym);
+    const rc = i < 3 ? 'rank-top3' : i < 10 ? 'rank-top10' : '';
+    const barPct = Math.min(Math.abs(s.surge) / maxSurge * 100, 60);
+
+    let tags = '';
+    if(score >= 70) tags = '<span class="tag tag-predict">★ 强烈看涨</span>';
+    else if(score >= 50) tags = '<span class="tag tag-predict">看涨</span>';
+    else if(isBuy) tags = '<span class="tag tag-buy">做多</span>';
+    else if(isSell) tags = '<span class="tag tag-sell">卖出</span>';
+    else tags = '<span class="tag tag-neutral">-</span>';
+
+    // Tech signals
+    const kd = S.klines[sym];
+    let tech = '<span class="text-muted" style="font-size:10px">--</span>';
+    if(kd && kd.length >= 15 && Object.keys(S.klines).length > 0){
+      const m5 = calcMA(kd, 5), m10 = calcMA(kd, 10), m20 = calcMA(kd, 20), r = calcRSI(kd, 14);
+      const f1 = m5 && m10 ? (m5 > m10 ? '🟢' : '🔴') : '';
+      const f2 = m10 && m20 ? (m10 > m20 ? '🟢' : '🔴') : '';
+      const f3 = r < 40 ? '🟢' : r > 70 ? '🔴' : '⚪';
+      tech = '<span style="font-size:10px;cursor:help" title="MA5:'+(m5?m5.toFixed(4):'-')+' MA10:'+(m10?m10.toFixed(4):'-')+' RSI:'+(r||'-')+'">'+f1+f2+f3+' '+(r?r.toFixed(0):'--')+'</span>';
+    }
+
+    const predColor = score >= 70 ? '#d2a8ff' : score >= 50 ? '#58a6ff' : score >= 30 ? '#d29922' : '#484f58';
+
+    html += '<tr class="' + predClass + (isWatched ? ' watched' : '') + '">';
+    html += '<td class="' + rc + '">' + (i+1) + '</td>';
+    html += '<td><a class="sym-link" data-sym="' + sym + '" style="cursor:pointer">' + base + '</a></td>';
+    html += '<td style="padding:0 4px;text-align:center;line-height:0">' + sparklineSVG(sym) + '</td>';
+    html += '<td>' + fmtP(s.price) + '</td>';
+    html += '<td>' + tags + '</td>';
+    html += '<td class="' + (s.change >= 0 ? 'text-up' : 'text-down') + '">' + fmtC(s.change) + '</td>';
+    html += '<td><div class="pred-bar" style="width:' + barPct + 'px;background:' + (isBuy?'#3fb95055':isSell?'#f8514955':'#58a6ff33') + ';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="' + (s.surge>0?'text-up':'') + '">' + fmtA(s.surgePct/60) + '</span></td>';
+    html += '<td>' + fmtV(s.quoteVol) + '</td>';
+    html += '<td>' + tech + '</td>';
+    html += '<td><div class="pred-bar" style="width:' + (score * 0.35) + 'px;background:linear-gradient(90deg,#484f58,' + predColor + ');margin-right:4px"></div><strong style="color:' + predColor + '">' + (score || 0) + '</strong></td>';
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+
+  if(ranking.length > 0){
+    const [sym, s] = ranking[0];
+    $('topMover').innerHTML = '🔮 首: <strong>' + sym.replace('USDT','') + '</strong> 预测分' + (s.predictScore||0) + ' ' + fmtC(s.change) + ' 加速' + fmtA(s.surgePct/60);
+  }
+}
+
+function updateBadges(){
+  $('buyBadge').textContent = getRanking('buy').length;
+  $('sellBadge').textContent = getRanking('sell').length;
+  const predCount = Object.entries(S.symbols).filter(([sym,s]) => (s.predictScore||0) >= (parseFloat($('minPredScore').value)||0)).length;
+  $('predBadge').textContent = predCount;
+  $('sigCount').textContent = (getRanking('buy').length + getRanking('sell').length);
+  $('coinCount').textContent = Object.keys(S.symbols).length + ' 交易对';
+}
+
+// ====== Watchlist ======
+function renderWatchlist(){
+  const body = $('watchlistBody');
+  $('watchBadge').textContent = S.watchlist.length;
+  if(!S.watchlist.length){
+    body.innerHTML = '<tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">自选为空<br>点击排行榜币名添加</div></td></tr>';
+    return;
+  }
+  let html = '';
+  for(let i = 0; i < S.watchlist.length; i++){
+    const w = S.watchlist[i], s = S.symbols[w.sym], base = w.sym.replace('USDT','');
+    const avg = w.avgPrice || 0;
+    let pnl = 0, pnlPct = 0;
+    if(s && avg > 0){ pnl = s.price - avg; pnlPct = ((s.price - avg) / avg) * 100; }
+    const score = s ? (s.predictScore || 0) : 0;
+    const predColor = score >= 70 ? '#d2a8ff' : score >= 50 ? '#58a6ff' : score >= 30 ? '#d29922' : '#484f58';
+    const isBuy = s && s.signal === 'buy';
+    const isSell = s && s.signal === 'sell';
+    html += '<tr class="' + (score >= 50 ? 'sig-buy' : '') + '">';
+    html += '<td>' + (i+1) + '</td>';
+    html += '<td class="text-highlight">' + base + '</td>';
+    html += '<td style="padding:0 4px;text-align:center;line-height:0">' + sparklineSVG(w.sym) + '</td>';
+    html += '<td>' + (s ? fmtP(s.price) : '--') + '</td>';
+    html += '<td>' + (isBuy ? '<span class="tag tag-buy">做多</span>' : isSell ? '<span class="tag tag-sell">卖出</span>' : '<span class="tag tag-neutral">-</span>') + '</td>';
+    html += '<td class="' + (s && s.change >= 0 ? 'text-up' : 'text-down') + '">' + (s ? fmtC(s.change) : '--') + '</td>';
+    html += '<td>' + fmtP(avg) + '</td>';
+    html += '<td class="' + (pnlPct > 0 ? 'text-up' : 'text-down') + '">' + (avg > 0 ? fmtC(pnlPct) : '--') + '</td>';
+    html += '<td><strong style="color:' + predColor + '">' + score + '</strong></td>';
+    html += '<td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\'' + w.sym + '\')">✕</button></td></tr>';
+    if(avg > 0){
+      html += '<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:10px;color:#484f58;padding:0 8px 4px">止盈 ~' + fmtP(avg * 1.03) + ' | 止损 ~' + fmtP(avg * 0.97) + ' | 当前 ' + (s ? fmtP(s.price) : '--') + '</td></tr>';
+    }
+  }
+  body.innerHTML = html;
+}
+
+function addWatch(sym){
+  if(S.watchlist.some(w => w.sym === sym)) return;
+  const s = S.symbols[sym];
+  S.watchlist.push({sym, avgPrice: s ? s.price : 0});
+  saveWatch();
+  render();
+  if(S.currentTab === 'watchlist') renderWatchlist();
+}
+function removeWatch(sym){
+  S.watchlist = S.watchlist.filter(w => w.sym !== sym);
+  saveWatch();
+  if(S.currentTab === 'watchlist') renderWatchlist();
+  render();
+}
+
+// ====== Alerts ======
+function checkAlerts(){
+  const now = Date.now();
+  const entries = Object.entries(S.symbols)
+    .filter(([sym,s]) => s.quoteVol >= 100000)
+    .sort((a,b) => ((b[1].predictScore||0)*2 + (b[1].buyScore||0)) - ((a[1].predictScore||0)*2 + (a[1].buyScore||0)));
+  for(const [sym, s] of entries.slice(0, 6)){
+    const base = sym.replace('USDT','');
+    const score = s.predictScore || 0;
+    const isWatched = S.watchlist.some(w => w.sym === sym);
+    if(score >= 70 && s.surgePct > 2 && s.change > 1){
+      const key = sym + '_pred';
+      if(!S.lastAlertKeys[key] || now - S.lastAlertKeys[key] > 180000){
+        S.lastAlertKeys[key] = now;
+        addAlertLine('pred', base, '预测分 ' + score + '! ' + fmtC(s.change));
+        if(isWatched) showToast('pred', '🔮 ' + base + ' 强烈看涨! 分' + score);
+      }
+    }
+    if(s.signal === 'sell' && s.surgePct > 3 && isWatched){
+      const key = sym + '_sell';
+      if(!S.lastAlertKeys[key] || now - S.lastAlertKeys[key] > 120000){
+        S.lastAlertKeys[key] = now;
+        addAlertLine('sell', base, '卖出加速 ' + fmtC(s.change));
+        if(isWatched) showToast('sell', '🔴 ' + base + ' 卖出信号!');
+      }
+    }
+  }
+}
+
+function addAlertLine(type, label, msg){
+  const now = Date.now();
+  S.alerts.unshift({type, label, msg, time: now});
+  if(S.alerts.length > 100) S.alerts.pop();
+  const body = $('alertsBody');
+  const ph = body.querySelector('[style*="text-align:center"]');
+  if(ph) ph.remove();
+  const div = document.createElement('div');
+  div.className = 'alert-line';
+  const t = new Date(now);
+  const ts = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+  div.innerHTML = '<span class="alert-time">' + ts + '</span><span class="alert-label ' + type + '">' + label + '</span><span>' + msg + '</span>';
+  body.prepend(div);
+  $('alertCount').textContent = S.alerts.length;
+}
+
+function showToast(type, msg){
+  const div = document.createElement('div');
+  div.className = 'toast ' + type;
+  div.textContent = msg;
+  $('toastContainer').appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+
+function showError(msg){
+  const banner = $('errorBanner');
+  banner.textContent = msg;
+  banner.style.display = '';
+}
+
+// ====== Timers ======
+function startTimers(){
+  stopTimers();
+  S.alertTimer = setInterval(checkAlerts, 6000);
+  S.klineTimer = setInterval(updateKlines, 30000);
+}
+function stopTimers(){
+  if(S.alertTimer){ clearInterval(S.alertTimer); S.alertTimer = null; }
+  if(S.klineTimer){ clearInterval(S.klineTimer); S.klineTimer = null; }
+}
+
+// ====== Event Binding ======
+document.querySelectorAll('.tab-btn').forEach(el => {
+  el.addEventListener('click', function(){
+    const tab = this.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    if(tab === 'watchlist'){
+      $('tableWrap').style.display = 'none';
+      $('watchlistPanel').style.display = '';
+      S.currentTab = 'watchlist';
+      renderWatchlist();
+    } else {
+      $('tableWrap').style.display = '';
+      $('watchlistPanel').style.display = 'none';
+      S.currentTab = tab;
+      render();
+    }
+  });
+});
+
+document.addEventListener('click', function(e){
+  const l = e.target.closest('.sym-link');
+  if(!l) return;
+  e.preventDefault();
+  addWatch(l.dataset.sym);
+});
+
+$('reconnectBtn').addEventListener('click', function(){
+  S.reconnAttempts = 0;
+  currentUrl = WS_URL;
+  connect();
+});
+
+$('pauseBtn').addEventListener('click', function(){
+  S.paused = !S.paused;
+  this.textContent = S.paused ? '▶ 继续' : '⏸ 暂停';
+});
+
+$('clearBtn').addEventListener('click', function(){
+  S.alerts = [];
+  S.lastAlertKeys = {};
+  $('alertsBody').innerHTML = '<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';
+  $('alertCount').textContent = '0';
+});
+
+['minVolFilter','priceCap','minPredScore','displayCount'].forEach(function(id){
+  $(id).addEventListener('change', function(){ if(S.connected) render(); });
+});
+
+// ====== Init ======
+loadWatch();
+connect();
+</script>
+</body>
+</html>
