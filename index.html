@@ -538,24 +538,35 @@ function renderWatchlist(){
 
 function addWatch(sym){
   if(!sym||!S.symbols[sym])return;
-  for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===sym)return}
+  for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===sym){alert('已在自选');return}}
   var sd=S.symbols[sym];
   S.watchlist.push({sym:sym,avgPrice:sd.price||0});
   saveWatch();
-  var wl=$('watchlistBody');
-  if(S.currentTab==='watchlist'){
-    renderWatchlist();
-    updateBadges();
-  }
-  render();
+  $('watchBadge').textContent=S.watchlist.length;
+  // Directly inject row
+  var tb=$('watchlistBody');
+  if(!tb)return;
+  // Check if empty state
+  var emptyMsg=tb.querySelector('td[colspan]');
+  if(emptyMsg)tb.innerHTML='';
+  tb.innerHTML=tb.innerHTML+'<tr><td>'+(S.watchlist.length)+'</td><td class="text-highlight">'+sym.replace('USDT','')+'</td><td style="padding:0 4px;text-align:center;line-height:0">--</td><td>'+fmtP(sd.price)+'</td><td><span class="tag tag-neutral">-</span></td><td class="'+(sd.change>=0?'text-up':'text-down')+'">'+fmtC(sd.change)+'</td><td>'+fmtP(sd.price)+'</td><td class="text-muted">--</td><td><strong style="color:#484f58">0</strong></td><td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\''+sym+'\'')">✕</button></td></tr>';
   $('watchSearch').value='';
   $('watchSuggestions').style.display='none';
 }
 function removeWatch(sym){
   var nw=[];for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym!==sym)nw.push(S.watchlist[j])}
   S.watchlist=nw;saveWatch();
-  if(S.currentTab==='watchlist'){renderWatchlist();updateBadges()}
-  render()
+  $('watchBadge').textContent=S.watchlist.length;
+  // Re-render watchlist
+  var tb=$('watchlistBody');if(!tb)return;
+  if(!S.watchlist.length){tb.innerHTML='<tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">自选为空</div></td></tr>';return}
+  var h='';
+  for(var j=0;j<S.watchlist.length;j++){
+    var w=S.watchlist[j],s=S.symbols[w.sym],b=w.sym.replace('USDT',''),avg=w.avgPrice||0;
+    var pnl=0,pp=0;if(s&&avg>0){pnl=s.price-avg;pp=((s.price-avg)/avg)*100}
+    h+='<tr><td>'+(j+1)+'</td><td class="text-highlight">'+b+'</td><td style="padding:0 4px;text-align:center;line-height:0">--</td><td>'+(s?fmtP(s.price):'--')+'</td><td><span class="tag tag-neutral">-</span></td><td class="'+(s&&s.change>=0?'text-up':'text-down')+'">'+(s?fmtC(s.change):'--')+'</td><td>'+fmtP(avg)+'</td><td class="'+(pp>0?'text-up':'text-down')+'">'+(avg>0?fmtC(pp):'--')+'</td><td><strong style="color:#484f58">0</strong></td><td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\''+w.sym+'\'')">✕</button></td></tr>';
+  }
+  tb.innerHTML=h;
 }
 function clrSuggest(){$('watchSuggestions').style.display='none';$('watchSearch').value=''}
 function watchInput(){
