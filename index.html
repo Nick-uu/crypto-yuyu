@@ -380,15 +380,7 @@ async function connect(){
   }
 
   // Auto mode: try sources in order
-  // Phase 1: Binance REST API (standard HTTPS, CORS supported, most reliable)
-  for(let i=0;i<Math.min(DOMAINS.rest.length,3);i++){
-    const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-    status('busy','Binance REST... ('+(i+1)+'/3)');
-    const data=await tryREST(url);
-    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
-  }
-
-  // Phase 2: Binance WebSocket (fast but port 9443 may be blocked)
+  // Phase 1: Binance WebSocket (no CORS, same as original)
   for(let i=0;i<DOMAINS.ws.length;i++){
     const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
     status('busy','Binance WS... ('+(i+1)+'/'+DOMAINS.ws.length+')');
@@ -396,7 +388,15 @@ async function connect(){
     if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');S.dataSource='ws';return}
   }
 
-  // Phase 3: CoinGecko (CORS-friendly)
+  // Phase 2: Binance REST (standard HTTPS, CORS supported)
+  for(let i=0;i<DOMAINS.rest.length;i++){
+    const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
+    status('busy','Binance REST... ('+(i+1)+'/'+DOMAINS.rest.length+')');
+    const data=await tryREST(url);
+    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
+  }
+
+  // Phase 3: CoinGecko (CORS-friendly, always works)
   status('busy','CoinGecko...');
   if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
 
@@ -538,8 +538,13 @@ function processOKX(data){
 function processBinance(arr){
   const now=Date.now();let count=0;
   for(const t of arr){
-    const sym=t.s;if(!sym||!sym.endsWith('USDT'))continue;
-    const price=+t.c||0,open=+t.o||0,change=open>0?((price-open)/open)*100:0,qVol=+t.q||0,vol=+t.v||0;
+    // Support both WS (short) and REST (long) field names
+    const sym=t.s||t.symbol;if(!sym||!sym.endsWith('USDT'))continue;
+    const price=+(t.c||t.lastPrice||0);
+    const open=+(t.o||t.openPrice||0);
+    const change=open>0?((price-open)/open)*100:0;
+    const qVol=+(t.q||t.quoteVolume||0);
+    const vol=+(t.v||t.volume||0);
     count++;
     if(!S.symbols[sym])S.symbols[sym]={price,change,vol,quoteVol:qVol,prevVol:0,velocity:0,surge:0,surgePct:0,volChange:0,priceTrend:0,buyScore:0,sellScore:0,signal:'neutral',predictScore:0};
     const s=S.symbols[sym];const pVol=s.vol||0;
