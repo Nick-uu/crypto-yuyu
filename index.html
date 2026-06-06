@@ -115,9 +115,16 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none">
+<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center;flex-wrap:wrap">
+<input id="watchSearch" type="text" placeholder="输入币名搜索添加 (如 BTC, ETH)" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
+<button id="watchAddBtn" class="gray" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
+<div id="watchSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;margin-top:2px"></div>
+</div>
+<div style="position:relative">
+<div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
-<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
+<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名或搜索添加自选</div></td></tr></tbody></table></div></div></div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -546,8 +553,40 @@ function renderWatchlist(){
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render();clearSuggestions()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+
+// ---- Watchlist search ----
+function watchSearchInput(){
+  const input=$('watchSearch'),v=(input.value||'').trim().toUpperCase();
+  const box=$('watchSuggestions');
+  if(!v||!S.connected){box.style.display='none';return}
+  const matches=Object.keys(S.symbols).filter(s=>s.includes(v)).filter(s=>!S.watchlist.some(w=>w.sym===s)).slice(0,15);
+  if(!matches.length){box.style.display='none';return}
+  box.style.display='block';
+  box.innerHTML=matches.map(s=>'<div class="ws-item" data-sym="'+s+'" style="padding:5px 10px;font-size:12px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d;display:flex;justify-content:space-between"><span>'+s.replace('USDT','')+'</span><span class="text-muted">'+(S.symbols[s]?fmtP(S.symbols[s].price):'')+'</span></div>').join('');
+  box.querySelectorAll('.ws-item').forEach(el=>{
+    el.addEventListener('click',()=>addWatch(el.dataset.sym));
+    el.addEventListener('mouseenter',()=>el.style.background='rgba(255,255,255,0.05)');
+    el.addEventListener('mouseleave',()=>el.style.background='');
+  });
+}
+function clearSuggestions(){$('watchSuggestions').style.display='none';$('watchSearch').value=''}
+function watchAddClick(){
+  const input=$('watchSearch'),v=(input.value||'').trim().toUpperCase();
+  if(!v)return;
+  const matches=Object.keys(S.symbols).filter(s=>s.includes(v));
+  if(matches.length===1){addWatch(matches[0]);return}
+  if(matches.length>1){watchSearchInput();return}
+  // Try exact match
+  const exact='USDT'===v.slice(-4)?v:v+'USDT';
+  if(S.symbols[exact]){addWatch(exact);return}
+  // Show no results
+  const box=$('watchSuggestions');
+  box.style.display='block';
+  box.innerHTML='<div style="padding:10px;color:#8b949e;font-size:12px;text-align:center">未找到: '+v+'</div>';
+  setTimeout(()=>box.style.display='none',2000);
+}
 
 
 // ---- MEXC (Chinese exchange, Binance-like API) ----
@@ -656,6 +695,10 @@ $('dataSource').addEventListener('change',function(){
   saveSource();
   connect();
 });
+$('watchSearch').addEventListener('input',watchSearchInput);
+$('watchSearch').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();watchAddClick()}});
+$('watchAddBtn').addEventListener('click',watchAddClick);
+document.addEventListener('click',function(e){if(!e.target.closest('#watchlistPanel')&&!e.target.closest('#watchSearch'))clearSuggestions()});
 
 loadWatch();loadSource();connect();
 </script></body></html>
