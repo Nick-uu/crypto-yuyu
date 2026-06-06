@@ -88,6 +88,8 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <select id="minPredScore"><option value="0">不限</option><option value="30">30+</option><option value="50" selected>50+</option><option value="70">70+</option><option value="85">85+</option></select>
 <label>显示</label>
 <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
+<label>数据源</label>
+<select id="dataSource"><option value="auto">🔄 自动</option><option value="mexc">🟢 MEXC</option><option value="huobi">🟡 Huobi</option><option value="okx">🟢 OKX</option><option value="gateio">🟢 Gate.io</option><option value="proxy">🚀 本地代理</option><option value="ws">⚡ Binance WS</option><option value="rest">📡 Binance REST</option><option value="cg">🦎 CoinGecko</option></select>
 <button id="pauseBtn" class="gray">⏸ 暂停</button>
 <button id="clearBtn" class="gray">清除</button>
 </div>
@@ -129,7 +131,8 @@ const S={
   symbols:{},snapshots:[],klines:{},klineFetching:new Set(),
   alerts:[],lastAlertKeys:{},watchlist:[],
   currentTab:'predict',alertTimer:null,klineTimer:null,restTimer:null,
-  reconnectTimer:null,connTimeout:null,started:false
+  reconnectTimer:null,connTimeout:null,started:false,
+  manualSource:'auto' // 'auto' | 'mexc' | 'huobi' | 'okx' | 'gateio' | 'proxy' | 'ws' | 'rest' | 'cg' 
 };
 const $=id=>document.getElementById(id);
 const fmtP=v=>{if(v==null)return'--';const n=+v;if(n<0.00001)return'$'+n.toFixed(8);if(n<0.001)return'$'+n.toFixed(6);if(n<1)return'$'+n.toFixed(4);if(n<50)return'$'+n.toFixed(2);return'$'+n.toLocaleString(undefined,{maxFractionDigits:2,minFractionDigits:2})};
@@ -139,6 +142,8 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
+function loadSource(){try{const d=localStorage.getItem('predSource');if(d)S.manualSource=d;$('dataSource').value=S.manualSource}catch(e){}}
+function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
 // ====== Connection Manager (Multi-source) ======
 const DOMAINS = {
@@ -146,6 +151,7 @@ const DOMAINS = {
   rest: ['api.binance.com','www.binance.com','api.binance.io','api1.binance.com','api2.binance.com','api3.binance.com'],
   mexc: ['api.mexc.com'],
   huobi: ['api.huobi.pro'],
+  gateio: ['api.gateio.ws'],
 };
 
 function status(dot,txt){$('statusDot').className='dot '+dot;$('statusText').textContent=txt}
@@ -161,7 +167,69 @@ async function connect(){
   $('reconnectBtn').style.display='none';
   $('loadingMsg').style.display='';$('mainTable').style.display='none';
 
-  // Phase 0: Local proxy (fast - connect fail in ~200ms if not running)
+  const manual = S.manualSource;
+  let connected = false;
+
+  // If user selected a specific source, try only that one
+  if (manual !== 'auto') {
+    $('loadingMsg').querySelector('span').textContent = '⏳ 正在连接: ' + $('dataSource').options[$('dataSource').selectedIndex].text;
+    if (manual === 'proxy') {
+      try{
+        const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
+        if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
+          processBinance(d);initConnected("proxy","🚀 本地代理","mode-rest");
+          if(S.restTimer)clearInterval(S.restTimer);
+          S.restTimer=setInterval(async()=>{if(!S.paused)try{const r2=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),5000);return c.signal})(new AbortController())});if(r2.ok)processBinance(await r2.json())}catch(e){}},5000);
+          connected=true;
+        }}
+      }catch(e){}
+    } else if (manual === 'ws') {
+      for(let i=0;i<DOMAINS.ws.length;i++){
+        const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
+        const ok=await tryWS(url);
+        if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');connected=true;break}
+      }
+    } else if (manual === 'rest') {
+      for(let i=0;i<DOMAINS.rest.length;i++){
+        const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
+        status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
+        const data=await tryREST(url);
+        if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');connected=true;break}
+      }
+    } else if (manual === 'mexc') { connected = await tryMEXC(); }
+    else if (manual === 'huobi') { connected = await tryHuobi(); }
+    else if (manual === 'okx') { connected = await tryOKX(); }
+    else if (manual === 'gateio') { connected = await tryGateio(); }
+    else if (manual === 'cg') { connected = await tryCoinGecko(); }
+
+    if (!connected) {
+      status('off','❌ '+$('dataSource').options[$('dataSource').selectedIndex].text+' 连不上');
+      setMode('连接失败','mode-err');
+      $('reconnectBtn').style.display='';
+      $('loadingMsg').innerHTML='⚠️ 所选数据源('+$('dataSource').options[$('dataSource').selectedIndex].text+')连接失败 · 尝试选择其他数据源';
+      return;
+    }
+    return;
+  }
+
+  // Auto mode: try sources in order
+  // Phase 1: MEXC
+  status('busy','连接 MEXC...');
+  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');S.dataSource='mexc';return}
+  
+  // Phase 2: Huobi/HTX
+  status('busy','连接 Huobi...');
+  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');S.dataSource='huobi';return}
+
+  // Phase 3: OKX
+  status('busy','连接 OKX...');
+  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');S.dataSource='okx';return}
+
+  // Phase 4: Gate.io
+  status('busy','连接 Gate.io...');
+  if(await tryGateio()){initConnected('gateio','🟢 Gate.io','mode-cg');S.dataSource='gateio';return}
+
+  // Phase 5: Local proxy
   try{
     const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
     if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
@@ -172,45 +240,31 @@ async function connect(){
     }}
   }catch(e){}
 
-  // Phase 1: WebSocket (takes ~5s per attempt)
+  // Phase 6: Binance WebSocket
   for(let i=0;i<DOMAINS.ws.length;i++){
     const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
     const ok=await tryWS(url);
-    if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');return}
+    if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');S.dataSource='ws';return}
   }
 
-  // Phase 2: Binance REST
+  // Phase 7: Binance REST
   for(let i=0;i<DOMAINS.rest.length;i++){
     const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-    status('busy','尝试 REST...('+(i+1)+'/'+DOMAINS.rest.length+')');
+    status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
     const data=await tryREST(url);
-    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');return}
+    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
   }
 
-  // Phase 3: CoinGecko
+  // Phase 8: CoinGecko
   status('busy','连接 CoinGecko...');
-  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');return}
-
-  // Phase 4: OKX
-  status('busy','连接 OKX...');
-  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');return}
-  
-  // Phase 5: MEXC (Chinese exchange, usually accessible)
-  status('busy','连接 MEXC...');
-  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');return}
-  
-  // Phase 6: Huobi/HTX
-  status('busy','连接 Huobi...');
-  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');return}
+  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
 
   // All failed
-  status('off','❌ 所有数据源连不上');
+  status('off','❌ 全部失败');
   setMode('连接失败','mode-err');
   $('reconnectBtn').style.display='';
-  $('loadingMsg').innerHTML='⚠️ 全部失败 · 解决: ① 终端运行 run-proxy.sh ② 换 DNS 1.1.1.1 ③ 用 Chrome 打开 ④ VPN';
-}
-
-function initConnected(mode,label,cls){
+  $('loadingMsg').innerHTML='⚠️ 全部失败 · 可手动选择数据源重试';
+}function initConnected(mode,label,cls){
   S.connected=true;S.dataSource=mode;
   status('on','已连接');setMode(label,cls);
   $('reconnectBtn').style.display='none';
@@ -597,6 +651,11 @@ $('reconnectBtn').addEventListener('click',connect);
 $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textContent=S.paused?'▶ 继续':'⏸ 暂停'});
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
+$('dataSource').addEventListener('change',function(){
+  S.manualSource=this.value;
+  saveSource();
+  connect();
+});
 
-loadWatch();connect();
+loadWatch();loadSource();connect();
 </script></body></html>
