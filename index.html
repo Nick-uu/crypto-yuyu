@@ -370,23 +370,28 @@ async function connect(){
   }
 
   // Auto mode: try sources in order
-  // Phase 1: MEXC
-  status('busy','连接 MEXC...');
-  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');S.dataSource='mexc';return}
-  
-  // Phase 2: Huobi/HTX
-  status('busy','连接 Huobi...');
-  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');S.dataSource='huobi';return}
+  // Phase 1: Binance WebSocket (no CORS issues, works with VPN)
+  for(let i=0;i<DOMAINS.ws.length;i++){
+    const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
+    status('busy','连接 Binance WS... ('+(i+1)+'/'+DOMAINS.ws.length+')');
+    const ok=await tryWS(url);
+    if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');S.dataSource='ws';return}
+  }
 
-  // Phase 3: OKX
-  status('busy','连接 OKX...');
-  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');S.dataSource='okx';return}
+  // Phase 2: Binance REST
+  for(let i=0;i<DOMAINS.rest.length;i++){
+    const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
+    status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
+    const data=await tryREST(url);
+    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
+  }
 
-  // Phase 4: Gate.io
-  status('busy','连接 Gate.io...');
-  if(await tryGateio()){initConnected('gateio','🟢 Gate.io','mode-cg');S.dataSource='gateio';return}
+  // Phase 3: CoinGecko (CORS-friendly)
+  status('busy','连接 CoinGecko...');
+  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
 
-  // Phase 5: Local proxy
+  // Phase 4: Local proxy (127.0.0.1:3456)
+  status('busy','检查本地代理...');
   try{
     const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
     if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
@@ -397,24 +402,21 @@ async function connect(){
     }}
   }catch(e){}
 
-  // Phase 6: Binance WebSocket
-  for(let i=0;i<DOMAINS.ws.length;i++){
-    const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
-    const ok=await tryWS(url);
-    if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');S.dataSource='ws';return}
-  }
+  // Phase 5: MEXC (may have CORS issues from browser)
+  status('busy','尝试 MEXC...');
+  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');S.dataSource='mexc';return}
+  
+  // Phase 6: Huobi/HTX
+  status('busy','尝试 Huobi...');
+  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');S.dataSource='huobi';return}
 
-  // Phase 7: Binance REST
-  for(let i=0;i<DOMAINS.rest.length;i++){
-    const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-    status('busy','尝试 Binance...('+(i+1)+'/'+DOMAINS.rest.length+')');
-    const data=await tryREST(url);
-    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
-  }
+  // Phase 7: OKX
+  status('busy','尝试 OKX...');
+  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');S.dataSource='okx';return}
 
-  // Phase 8: CoinGecko
-  status('busy','连接 CoinGecko...');
-  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
+  // Phase 8: Gate.io
+  status('busy','尝试 Gate.io...');
+  if(await tryGateio()){initConnected('gateio','🟢 Gate.io','mode-cg');S.dataSource='gateio';return}
 
   // All failed
   status('off','❌ 全部失败');
