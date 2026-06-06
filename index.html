@@ -90,6 +90,9 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
 <label>数据源</label>
 <select id="dataSource"><option value="auto">🔄 自动</option><option value="ws">⚡ Binance WS</option><option value="rest">📡 Binance REST</option><option value="cg">🦎 CoinGecko</option><option value="mexc">🟢 MEXC</option><option value="huobi">🟡 Huobi</option><option value="okx">🟢 OKX</option></select>
+<label>每笔</label>
+<input id="tradeBudget" type="number" value="100" style="width:55px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:4px 5px;font-size:11px;outline:none">
+<span style="font-size:11px;color:#8b949e">U</span>
 <button id="pauseBtn" class="gray">⏸ 暂停</button>
 <button id="clearBtn" class="gray">清除</button>
 </div>
@@ -118,15 +121,9 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none">
-<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center">
-<input id="watchSearch" type="text" placeholder="输入币名搜索添加" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
-<button id="watchAddBtn" onclick="watchDoAdd()" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
-</div>
-<div id="watchSuggestions" style="display:none;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;font-size:12px;margin:0 16px"></div>
-<div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
-<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">搜索或点击币名加入自选</div></td></tr></tbody></table></div></div>
+<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -150,6 +147,8 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
+function loadBudget(){try{var v=localStorage.getItem('predBudget');if(v){$('tradeBudget').value=v}}catch(e){}}
+function saveBudget(){try{localStorage.setItem('predBudget',$('tradeBudget').value)}catch(e){}}
 function loadSource(){try{const d=localStorage.getItem('predSource');if(d&&d!=='auto'){S.manualSource=d;$('dataSource').value=d}}catch(e){}}
 function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
@@ -439,149 +438,25 @@ async function fetchKlines(sym){
 function calcMA(d,p){if(!d||d.length<p)return null;return d.slice(-p).reduce((a,b)=>a+b.close,0)/p}
 function calcRSI(d,p){p=p||14;if(!d||d.length<p+1)return 50;const c=d.map(x=>x.close);let g=0,l=0;for(let i=c.length-p;i<c.length;i++){const d2=c[i]-c[i-1];if(d2>0)g+=d2;else l-=d2}if(l===0)return 100;return 100-100/(1+g/l)}
 
-function calcEMA(arr,p){
-  if(arr.length<p)return null;
-  var k=2/(p+1);var ema=0;
-  for(var i=0;i<p;i++)ema+=arr[i].close;
-  ema=ema/p;
-  for(var i=p;i<arr.length;i++)ema=arr[i].close*k+ema*(1-k);
-  return ema;
-}
-function calcBB(arr,p){
-  if(arr.length<p)return{m:null,u:null,l:null,b:0};
-  var slice=arr.slice(-p);var sum=0;
-  for(var i=0;i<slice.length;i++)sum+=slice[i].close;
-  var m=sum/p;var sq=0;
-  for(var i=0;i<slice.length;i++)sq+=(slice[i].close-m)*(slice[i].close-m);
-  var sd=Math.sqrt(sq/p);
-  return{m:null,u:m+2*sd,l:m-2*sd,b:(m+2*sd-(m-2*sd))/m};
-}
-function calcMACD(arr){
-  var r={m:null,s:null,h:0,d:0};
-  if(arr.length<35)return r;
-  var e12=null,e26=null;
-  // EMA12
-  var k12=2/13;var ema=0;
-  for(var i=0;i<12;i++)ema+=arr[i].close;ema=ema/12;
-  for(var i=12;i<arr.length;i++)ema=arr[i].close*k12+ema*(1-k12);
-  e12=ema;
-  // EMA26
-  var k26=2/27;ema=0;
-  for(var i=0;i<26;i++)ema+=arr[i].close;ema=ema/26;
-  for(var i=26;i<arr.length;i++)ema=arr[i].close*k26+ema*(1-k26);
-  e26=ema;
-  if(e12===null||e26===null)return r;
-  r.m=e12-e26;
-  // Signal = simple SMA of last 9 MACD values
-  var macds=[];k12=2/13;k26=2/27;
-  for(var i=0;i<arr.length;i++){
-    var e12i=0,e26i=0;
-    if(i<12){for(var j=0;j<=i;j++)e12i+=arr[j].close;e12i=e12i/(i+1)}else{
-      if(i===12){for(var j=0;j<12;j++)e12i+=arr[j].close;e12i=e12i/12}
-      else e12i=arr[i].close*k12+e12i*(1-k12)
-    }
-    if(i<26){for(var j=0;j<=i;j++)e26i+=arr[j].close;e26i=e26i/(i+1)}else{
-      if(i===26){for(var j=0;j<26;j++)e26i+=arr[j].close;e26i=e26i/26}
-      else e26i=arr[i].close*k26+e26i*(1-k26)
-    }
-    macds.push(e12i-e26i);
-  }
-  if(macds.length<9)return r;
-  var sig=0;for(var i=macds.length-9;i<macds.length;i++)sig+=macds[i];sig=sig/9;
-  r.s=sig;
-  r.h=macds[macds.length-1]-sig;
-  // Divergence: check last 14 bars
-  var n=Math.min(14,arr.length);var pl=arr[arr.length-n].low,pi=0;
-  var ml=macds[macds.length-n],mi=0;
-  for(var i=arr.length-n;i<arr.length;i++){
-    if(arr[i].low<pl){pl=arr[i].low;pi=i-(arr.length-n)}
-    if(macds[i]<ml){ml=macds[i];mi=i-(arr.length-n)}
-  }
-  if(pi>mi&&pi>0&&ml>macds[macds.length-n])r.d=1;
-  if(mi>pi&&mi>0&&pl>arr[arr.length-n].close)r.d=-1;
-  return r;
-}
-function calcATR(arr,p){
-  if(arr.length<p+1)return{v:null,r:false};
-  var trs=[];
-  for(var i=1;i<arr.length;i++){
-    var hl=arr[i].high-arr[i].low;
-    var hc=Math.abs(arr[i].high-arr[i-1].close);
-    var lc=Math.abs(arr[i].low-arr[i-1].close);
-    trs.push(Math.max(hl,hc,lc));
-  }
-  var atr=0;for(var i=trs.length-p;i<trs.length;i++)atr+=trs[i];atr=atr/p;
-  var patr=0;for(var i=trs.length-p-1;i<trs.length-1;i++)patr+=trs[i];patr=patr/p;
-  return{v:atr,r:atr>patr*1.05};
-}
-function calcPattern(arr){
-  if(arr.length<3)return{n:'',s:0};
-  var c=arr[arr.length-1],p1=arr[arr.length-2],p2=arr[arr.length-3];
-  var body=Math.abs(c.close-c.open),rng=c.high-c.low;
-  var uw=c.high-Math.max(c.close,c.open),lw=Math.min(c.close,c.open)-c.low;
-  if(rng>0&&body/rng<0.08)return{n:'十字星',s:uw>lw*2?5:-5};
-  if(body/rng<0.35&&lw>body*2&&uw<body*0.5&&c.close<c.open)return{n:'锤子线',s:12};
-  if(body/rng<0.35&&uw>body*2&&lw<body*0.5&&c.close>c.open)return{n:'射击星',s:-8};
-  var pb=Math.abs(p1.close-p1.open);
-  if(c.close>c.open&&p1.close<p1.open&&c.open<p1.close&&c.close>p1.open&&body>pb*1.2)return{n:'看涨吞没',s:15};
-  if(c.close<c.open&&p1.close>p1.open&&c.open>p1.close&&c.close<p1.open&&body>pb*1.2)return{n:'看跌吞没',s:-10};
-  if(c.close>c.open&&p1.close>p1.open&&p2.close>p2.open&&c.close>p1.close&&p1.close>p2.close)return{n:'三白兵',s:12};
-  return{n:'',s:0};
-}
 function calcScore(data){
-  if(!data||data.length<15)return{s:0,d:[]};
-  var c=data[data.length-1].close;
-  var m5=calcMA(data,5),m10=calcMA(data,10),m20=calcMA(data,20),rsi=calcRSI(data,14);
-  var v5=0;for(var i=data.length-5;i<data.length;i++)v5+=data[i].volume;v5=v5/5;
-  var v10=0;for(var i=data.length-10;i<data.length-5;i++)v10+=data[i].volume;v10=v10/5;
-  var vr=v10>0?v5/v10:1;
-  var sc=0;var det=[];
-  if(m5!==null&&m10!==null&&m5>m10){sc+=15;det.push('均线多头+15')}
-  if(m10!==null&&m20!==null&&m10>m20){sc+=10;det.push('中线走强+10')}
-  if(m5!==null&&c>m5*1.001){sc+=8;det.push('破MA5+8')}
-  if(m20!==null&&c>m20*1.002){sc+=7;det.push('破MA20+7')}
-  if(vr>1.8){sc+=15;det.push('量比放大+15')}else if(vr>1.3){sc+=10;det.push('量比放大+10')}else if(vr>1.1){sc+=5;det.push('量比微增+5')}
-  if(rsi<30){sc+=20;det.push('RSI超卖+20')}else if(rsi<40){sc+=15;det.push('RSI偏低+15')}else if(rsi<50){sc+=10;det.push('RSI偏弱+10')}else if(rsi<60){sc+=5;det.push('RSI中性+5')}else if(rsi>75){sc-=15;det.push('RSI超买-15')}else if(rsi>70){sc-=8;det.push('RSI偏高-8')}
-  var m5m=data.length>=6?(c-data[data.length-6].close)/c*100:0;
-  if(m5m>3){sc+=15;det.push('5m拉升+15')}else if(m5m>1.5){sc+=10;det.push('5m拉升+10')}else if(m5m>0){sc+=5;det.push('5m微涨+5')}else if(m5m<-2){sc-=5;det.push('5m下跌-5')}
-  if(v5>0){var vr2=data[data.length-1].volume/v5;if(vr2>3){sc+=10;det.push('末K放量+10')}else if(vr2>2){sc+=6;det.push('末K放量+6')}else if(vr2>1.5){sc+=3;det.push('末K放量+3')}}
-  var p10=data.slice(-10);var rh=0,rl=Infinity;
-  for(var i=0;i<p10.length;i++){if(p10[i].high>rh)rh=p10[i].high;if(p10[i].low<rl)rl=p10[i].low}
-  var pir=rh-rl>0?(c-rl)/(rh-rl):0.5;
-  if(pir<0.2&&vr>1.5){sc+=10;det.push('低位放量+10')}
-  // Bollinger Bands
-  var bb=calcBB(data,20);
-  if(bb.l!==null){
-    if(c<bb.l){sc+=20;det.push('布林下轨+20')}else if(c<bb.m-(bb.m-bb.l)*0.5){sc+=8;det.push('布林偏下+8')}
-    if(c>bb.u){sc-=15;det.push('布林上轨-15')}else if(c>bb.m+(bb.u-bb.m)*0.5){sc-=5;det.push('布林偏上-5')}
-    if(bb.b>0.15){sc+=5;det.push('布林扩口+5')}
-  }
-  // MACD
-  var md=calcMACD(data);
-  if(md.m!==null&&md.s!==null){
-    if(md.m>md.s){sc+=10;det.push('MACD金叉+10')}
-    if(md.h>0){sc+=5;det.push('MACD动量+5')}
-    if(md.d>0){sc+=20;det.push('底背离+20')}
-    if(md.d<0){sc-=15;det.push('顶背离-15')}
-  }
-  // ATR
-  var atr=calcATR(data,14);
-  if(atr.v!==null&&atr.v>0){
-    var last=data[data.length-1],prev=data[data.length-2];
-    var ltr=Math.max(last.high-last.low,Math.abs(last.high-prev.close),Math.abs(last.low-prev.close));
-    if(ltr>atr.v*1.5){sc+=10;det.push('ATR突破+10')}
-    if(atr.r){sc+=5;det.push('波动扩大+5')}
-  }
-  // Consecutive candles
-  var gr=0,re=0;
-  for(var i=data.length-1;i>=0;i--){if(data[i].close>=data[i].open)gr++;else break}
-  for(var i=data.length-1;i>=0;i--){if(data[i].close<data[i].open)re++;else break}
-  if(gr>=3){var add=gr>=5?15:10;sc+=add;det.push('连阳+'+add)}
-  if(re>=3){var sub=re>=5?10:5;sc-=sub;det.push('连阴-'+sub)}
-  // Candlestick patterns
-  var pat=calcPattern(data);
-  if(pat.s!==0){sc+=pat.s;det.push(pat.n+(pat.s>0?'+':'')+pat.s)}
-  return{s:Math.max(0,Math.min(100,Math.round(sc))),d:det};
+  if(!data||data.length<15)return 0;
+  const c=data[data.length-1].close;
+  const m5=calcMA(data,5),m10=calcMA(data,10),m20=calcMA(data,20),rsi=calcRSI(data,14);
+  const v5=data.slice(-5).reduce((a,b)=>a+b.volume,0)/5,v10=data.slice(-10,-5).reduce((a,b)=>a+b.volume,0)/5,vr=v10>0?v5/v10:1;
+  let sc=0;
+  if(m5!==null&&m10!==null&&m5>m10)sc+=15;
+  if(m10!==null&&m20!==null&&m10>m20)sc+=10;
+  if(m5!==null&&c>m5*1.001)sc+=8;
+  if(m20!==null&&c>m20*1.002)sc+=7;
+  if(vr>1.8)sc+=15;else if(vr>1.3)sc+=10;else if(vr>1.1)sc+=5;
+  if(rsi<30)sc+=20;else if(rsi<40)sc+=15;else if(rsi<50)sc+=10;else if(rsi<60)sc+=5;else if(rsi>75)sc-=15;else if(rsi>70)sc-=8;
+  const m5m=data.length>=6?(c-data[data.length-6].close)/c*100:0;
+  if(m5m>3)sc+=15;else if(m5m>1.5)sc+=10;else if(m5m>0)sc+=5;else if(m5m<-2)sc-=5;
+  if(v5>0){const vr2=data[data.length-1].volume/v5;if(vr2>3)sc+=10;else if(vr2>2)sc+=6;else if(vr2>1.5)sc+=3}
+  const p10=data.slice(-10);const rh=Math.max(...p10.map(d=>d.high)),rl=Math.min(...p10.map(d=>d.low));
+  const pir=rh-rl>0?(c-rl)/(rh-rl):0.5;
+  if(pir<0.2&&vr>1.5)sc+=10;
+  return Math.max(0,Math.min(100,Math.round(sc)));
 }
 
 async function updateKlines(){
@@ -591,7 +466,7 @@ async function updateKlines(){
   await Promise.allSettled(top.map(([sym])=>{
     if(S.klineFetching.has(sym))return;
     S.klineFetching.add(sym);
-    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym]){var cr=calcScore(d);S.symbols[sym].predictScore=cr.s;S.symbols[sym].scoreDetail=cr.d}}}).finally(()=>S.klineFetching.delete(sym));
+    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym])S.symbols[sym].predictScore=calcScore(d)}}).finally(()=>S.klineFetching.delete(sym));
   }));
   $('klineCount').textContent=Object.keys(S.klines).length;
   render();
@@ -633,7 +508,7 @@ function render(){
     const kd=S.klines[sym];
     if(kd&&kd.length>=15){const m5=calcMA(kd,5),m10=calcMA(kd,10),m20=calcMA(kd,20),rsi=calcRSI(kd,14);const f1=m5&&m10?(m5>m10?'🟢':'🔴'):'',f2=m10&&m20?(m10>m20?'🟢':'🔴'):'',f3=rsi<40?'🟢':rsi>70?'🔴':'⚪';tech='<span style="font-size:10px" title="RSI:'+(rsi||'-')+'">'+f1+f2+f3+' '+(rsi?rsi.toFixed(0):'--')+'</span>'}
     const c2=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
-    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td title="'+st+'" style="cursor:help"><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
+    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
   }
   tb.innerHTML=h;
   if(r.length>0){const[sym,s]=r[0];$('topMover').innerHTML='🔮 首: <strong>'+sym.replace('USDT','')+'</strong> 分'+(s.predictScore||0)+' '+fmtC(s.change)}
@@ -655,51 +530,11 @@ function renderWatchlist(){
     let pnl=0,pnlPct=0;if(s&&avg>0){pnl=s.price-avg;pnlPct=((s.price-avg)/avg)*100}
     const sc=s?(s.predictScore||0):0,pc=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
     h+='<tr class="'+(sc>=50?'sig-buy':'')+'"><td>'+(i+1)+'</td><td class="text-highlight">'+b+'</td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(w.sym)+'</td><td>'+(s?fmtP(s.price):'--')+'</td><td>'+(s&&s.signal==='buy'?'<span class="tag tag-buy">做多</span>':s&&s.signal==='sell'?'<span class="tag tag-sell">卖出</span>':'<span class="tag tag-neutral">-</span>')+'</td><td class="'+(s&&s.change>=0?'text-up':'text-down')+'">'+(s?fmtC(s.change):'--')+'</td><td>'+fmtP(avg)+'</td><td class="'+(pnlPct>0?'text-up':'text-down')+'">'+(avg>0?fmtC(pnlPct):'--')+'</td><td><strong style="color:'+pc+'">'+sc+'</strong></td><td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\''+w.sym+'\')">✕</button></td></tr>';
-    if(avg>0)h+='<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:10px;color:#484f58;padding:0 8px 4px">止盈 ~'+fmtP(avg*1.03)+' | 止损 ~'+fmtP(avg*0.97)+' | 当前 '+(s?fmtP(s.price):'--')+'</td></tr>';
+    if(avg>0){var bd2=parseFloat($('tradeBudget')&&$('tradeBudget').value)||100;var sn='观望',sa=0,sc2='text-muted';if(sc>=70){sn='大买';sa=Math.round(bd2);sc2='text-up'}else if(sc>=50){sn='小买';sa=Math.round(bd2*0.6);sc2='text-up'}else if(sc>=30){sn='关注';sa=Math.round(bd2*0.3);sc2='text-highlight'};h+='<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:10px;color:#484f58;padding:0 8px 4px">建议 <span class="'+sc2+'">'+sn+'</span> '+(sa>0?sa+'U':'—')+' | 止盈 ~'+fmtP(avg*1.03)+' | 止损 ~'+fmtP(avg*0.97)+' | 当前 '+(s?fmtP(s.price):'--')+'</td></tr>'}
   }
   bd.innerHTML=h;
 }
 
-
-// ---- Watchlist search ----
-function watchInput(){
-  var inp=document.getElementById('watchSearch');if(!inp)return;
-  var v=inp.value.toUpperCase().trim();
-  var box=document.getElementById('watchSuggestions');if(!box)return;
-  if(!v||!S.connected){box.style.display='none';box.innerHTML='';return}
-  var keys=Object.keys(S.symbols);var html='';
-  for(var i=0;i<keys.length;i++){
-    var s=keys[i];if(!s.includes(v))continue;
-    var dup=false;for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===s){dup=true;break}}
-    if(dup)continue;
-    html=html+'<div class="wsi" style="padding:6px 10px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d">'+s.replace('USDT','')+'</div>';
-    if(i>20)break;
-  }
-  if(!html){box.style.display='none';box.innerHTML='';return}
-  box.innerHTML=html;
-  box.style.display='block';
-  var items=box.children;
-  for(var i=0;i<items.length;i++){
-    items[i].onclick=function(){watchPick(this.textContent)};
-  }
-}
-function watchPick(name){
-  var sym=name.toUpperCase().trim();
-  if(sym.slice(-4)!=='USDT')sym=sym+'USDT';
-  if(!S.symbols[sym])return;
-  for(var i=0;i<S.watchlist.length;i++){if(S.watchlist[i].sym===sym)return}
-  S.watchlist.push({sym:sym,avgPrice:S.symbols[sym].price||0});
-  saveWatch();
-  S.currentTab='watchlist';
-  renderWatchlist();
-  document.getElementById('watchSearch').value='';
-  document.getElementById('watchSuggestions').style.display='none';
-}
-function watchDoAdd(){
-  var inp=document.getElementById('watchSearch');if(!inp)return;
-  var v=inp.value.toUpperCase().trim();if(!v)return;
-  watchPick(v);
-}
 function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 
@@ -806,5 +641,5 @@ $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textCo
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
 
-loadWatch();connect();
+loadWatch();loadBudget();connect();
 </script></body></html>
