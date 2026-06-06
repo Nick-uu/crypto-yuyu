@@ -535,7 +535,44 @@ function renderWatchlist(){
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+
+// ---- Watchlist search ----
+function watchInput(){
+  var inp=document.getElementById("watchSearch");if(!inp)return;
+  var v=inp.value.toUpperCase().trim();
+  var box=document.getElementById("watchSuggestions");if(!box)return;
+  if(!v||!S.connected){box.style.display="none";box.innerHTML="";return}
+  var keys=Object.keys(S.symbols);var h="";
+  for(var i=0;i<keys.length;i++){
+    var s=keys[i];if(!s.includes(v))continue;
+    var dup=false;for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===s){dup=true;break}}
+    if(dup)continue;
+    h=h+'<div class="wsi" style="padding:6px 10px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d">'+s.replace('USDT','')+'</div>';
+    if(i>15)break;
+  }
+  if(!h){box.style.display="none";box.innerHTML="";return}
+  box.innerHTML=h;box.style.display="block";
+  var items=box.children;
+  for(var i=0;i<items.length;i++){
+    items[i].onclick=function(){watchPick(this.textContent)};
+  }
+}
+function watchPick(name){
+  var sym=name.toUpperCase().trim();
+  if(sym.slice(-4)!=="USDT")sym=sym+"USDT";
+  if(!S.symbols[sym])return;
+  for(var i=0;i<S.watchlist.length;i++){if(S.watchlist[i].sym===sym)return}
+  S.watchlist.push({sym:sym,avgPrice:S.symbols[sym].price||0});
+  saveWatch();
+  S.currentTab="watchlist";renderWatchlist();
+  document.getElementById("watchSearch").value="";
+  document.getElementById("watchSuggestions").style.display="none";
+}
+function watchDoAdd(){
+  var inp=document.getElementById("watchSearch");if(!inp)return;
+  var v=inp.value.toUpperCase().trim();if(!v)return;
+  watchPick(v);
+}function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 
 
