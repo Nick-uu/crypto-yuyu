@@ -177,21 +177,56 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
 
-// ---- CoinGecko Trending ----
+// ---- CoinGecko Trending with Sentiment ----
 function fetchTrending(){
-  if(S.trendingData)return; // Already fetched
-  fetch('https://api.coingecko.com/api/v3/search/trending',{signal:(c=>{setTimeout(()=>c.abort(),10000);return c.signal})(new AbortController())})
+  S.trendingData=null;S.trendingCoins=[];
+  $('loadingMsg').style.display='';$('mainTable').style.display='none';
+  $('loadingMsg').innerHTML='🔄 获取热搜数据...<br><span style="font-size:12px;color:#8b949e">⏳ CoinGecko 趋势 + 市场情绪分析</span>';
+  fetch('https://api.coingecko.com/api/v3/search/trending',{signal:(c=>{setTimeout(()=>c.abort(),15000);return c.signal})(new AbortController())})
     .then(r=>r.json()).then(d=>{
-    if(!d.coins||!d.coins.length)return;
+    if(!d.coins||!d.coins.length){$('loadingMsg').innerHTML='⚠️ 获取热搜失败';return}
     S.trendingData=d;
-    // Add trending score to symbols
-    for(let i=0;i<d.coins.length;i++){
+    const coins=[];
+    for(let i=0;i<Math.min(d.coins.length,25);i++){
       const c=d.coins[i].item;
       const sym=(c.symbol||'').toUpperCase()+'USDT';
-      if(S.symbols[sym])S.symbols[sym].trendingScore=(d.coins.length-i);
+      const ls=S.symbols[sym];
+      const ch=ls?ls.change:(c.data&&c.data.price_change_percentage_24h?c.data.price_change_percentage_24h.usd:0);
+      const pr=ls?ls.price:(c.data&&c.data.price?parseFloat(c.data.price.replace(/[$,]/g,'')):0);
+      const vl=ls?ls.quoteVol:(c.data&&c.data.total_volume?parseFloat(c.data.total_volume.replace(/[$,]/g,'')):0);
+      const ps=ls?ls.predictScore:0;
+      const sd=ls?ls.scoreDetail:[];
+      // Attitude/sentiment
+      let st='中性',sc='#8b949e',si='⚪';
+      if(ps>=50||ch>3){st='看涨';sc='#3fb950';si='🟢'}
+      else if(ch<-3||(ls&&ls.signal==='sell')){st='看跌';sc='#f85149';si='🔴'}
+      else if(ps>=30||ch>0){st='偏多';sc='#58a6ff';si='🟦'}
+      else if(ch<0){st='偏空';sc='#d29922';si='🟡'}
+      coins.push({r:i+1,id:c.id,n:c.name,sym:symbol:c.symbol.toUpperCase(),pr,ch,vl,mr:c.market_cap_rank||'-',sc:d.coins.length-i,ps,sd,st,sc,si,loc:!!ls});
     }
-    if(S.currentTab==='trending')render();
-  }).catch(()=>{});
+    S.trendingCoins=coins;
+    if(S.currentTab==='trending')renderTrending();
+  }).catch(()=>{$('loadingMsg').innerHTML='⚠️ 获取热搜失败<br><span style="font-size:12px;color:#8b949e">可点重新加载重试</span>'});
+}
+function renderTrending(){
+  $('loadingMsg').style.display='none';$('mainTable').style.display='';
+  const tb=$('tableBody');
+  if(!S.trendingCoins||!S.trendingCoins.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:#484f58;padding:30px">暂无热搜数据</td></tr>';return}
+  $('mainTable').querySelector('thead').innerHTML='<tr><th>#</th><th>币种</th><th>热度</th><th>价格</th><th>态度</th><th>涨跌幅</th><th>成交额</th><th>排名</th><th>预测</th><th>来源</th></tr>';
+  let h='';
+  for(const c of S.trendingCoins){
+    const rc=c.r<=3?'rank-top3':c.r<=10?'rank-top10':'';
+    const ht=c.sc>=20?'🔥🔥🔥':c.sc>=10?'🔥🔥':'🔥';
+    const p2=c.ps||0,pc=p2>=70?'#d2a8ff':p2>=50?'#58a6ff':p2>=30?'#d29922':'#484f58';
+    h+='<tr><td class="'+rc+'">'+c.r+'</td><td style="text-align:left;font-weight:600">'+(c.n||c.symbol)+'<span class="text-muted" style="font-size:10px;margin-left:4px">'+c.symbol+'</span></td>'
+      +'<td style="font-size:13px">'+ht+'</td><td>'+(c.pr?fmtP(c.pr):'--')+'</td>'
+      +'<td><span class="tag" style="background:'+c.sc+'22;color:'+c.sc+'">'+c.si+' '+c.st+'</span></td>'
+      +'<td class="'+(c.ch>=0?'text-up':'text-down')+'">'+(c.ch?fmtC(c.ch):'--')+'</td>'
+      +'<td>'+(c.vl?fmtV(c.vl):'--')+'</td><td>#'+c.mr+'</td>'
+      +'<td><strong style="color:'+pc+'">'+(p2||0)+'</strong></td>'
+      +'<td style="font-size:10px;color:#8b949e">'+(c.loc?'有数据':'仅热搜')+'</td></tr>';
+  }
+  tb.innerHTML=h;
 }
 
 // ---- Binance News ----
@@ -240,12 +275,7 @@ function renderNews(){
   }
 }
 
-// ---- Trending sort in getRanking ----
-function getRankingTrending(){
-  let e=Object.entries(S.symbols).filter(([sym,s])=>s.trendingScore>0);
-  e.sort((a,b)=>(b[1].trendingScore||0)-(a[1].trendingScore||0));
-  return e.slice(0,parseInt($('displayCount').value)||50);
-}
+
 function loadSource(){try{const d=localStorage.getItem('predSource');if(d)S.manualSource=d;$('dataSource').value=S.manualSource}catch(e){}}
 function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
@@ -713,7 +743,6 @@ function spark(sym){
 function getRanking(mode){
   const l=parseInt($('displayCount').value)||50,mv=parseFloat($('minVolFilter').value)||0,pc=parseFloat($('priceCap').value)||99999,mp=parseFloat($('minPredScore').value)||0;
   let e=Object.entries(S.symbols).filter(([sym,s])=>s.quoteVol>=mv&&s.price<=pc);
-  if(mode==='trending'){return getRankingTrending()}
   if(mode==='buy'){e=e.filter(([sym,s])=>s.buyScore>0);e.sort((a,b)=>(b[1].buyScore||0)-(a[1].buyScore||0))}
   else if(mode==='sell'){e=e.filter(([sym,s])=>s.sellScore>0);e.sort((a,b)=>(b[1].sellScore||0)-(a[1].sellScore||0))}
   else{e=e.filter(([sym,s])=>(s.predictScore||0)>=mp);e.sort((a,b)=>{const d=(b[1].predictScore||0)-(a[1].predictScore||0);return Math.abs(d)<5?(b[1].buyScore||0)-(a[1].buyScore||0):d})}
@@ -895,9 +924,9 @@ function toast(t,m){const d=document.createElement('div');d.className='toast '+t
 function startTimers(){stopTimers();S.alertTimer=setInterval(checkAlerts,6000);S.klineTimer=setInterval(updateKlines,35000)}
 function stopTimers(){if(S.alertTimer){clearInterval(S.alertTimer);S.alertTimer=null}if(S.klineTimer){clearInterval(S.klineTimer);S.klineTimer=null}}
 
-document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';$('newsPanel').style.display='none';S.currentTab='watchlist';renderWatchlist()}else if(t==='news'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='none';$('newsPanel').style.display='';S.currentTab='news';renderNews()}else if(t==='trending'){$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab='trending';fetchTrending();render()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab=t;render()}})});
+document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';$('newsPanel').style.display='none';S.currentTab='watchlist';renderWatchlist()}else if(t==='news'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='none';$('newsPanel').style.display='';S.currentTab='news';renderNews()}else if(t==='trending'){$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab='trending';fetchTrending()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab=t;render()}})});
 document.addEventListener('click',e=>{const l=e.target.closest('.sym-link');if(!l)return;e.preventDefault();addWatch(l.dataset.sym)});
-$('reconnectBtn').addEventListener('click',connect);
+$('reconnectBtn').addEventListener('click',function(){if(S.currentTab==='trending'){fetchTrending()}else{connect()}});
 $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textContent=S.paused?'▶ 继续':'⏸ 暂停'});
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
