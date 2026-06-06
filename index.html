@@ -68,17 +68,6 @@ tr.predict-high td{background:rgba(210,168,255,0.04)}
 .toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:4px}
 .toast{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 12px;font-size:12px;max-width:280px;box-shadow:0 6px 16px rgba(0,0,0,.4);animation:fadeIn .2s}
 .toast.buy{border-color:#3fb950}.toast.sell{border-color:#f85149}.toast.pred{border-color:#d2a8ff}
-.news-item{padding:8px 4px;border-bottom:1px solid #1c2128;animation:fadeIn .2s}
-.news-item:hover{background:rgba(255,255,255,0.015)}
-.news-time{color:#484f58;font-size:10px;min-width:52px;display:inline-block}
-.news-cat{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;margin:0 4px}
-.news-cat-listing{background:rgba(63,185,80,0.15);color:#3fb950}
-.news-cat-news{background:rgba(56,139,253,0.15);color:#58a6ff}
-.news-cat-event{background:rgba(210,168,255,0.15);color:#d2a8ff}
-.news-cat-delist{background:rgba(248,81,73,0.15);color:#f85149}
-.news-cat-default{background:#21262d;color:#8b949e}
-.news-title{color:#c9d1d9;font-size:11px;cursor:pointer;text-decoration:none;display:block;line-height:1.4}
-.news-title:hover{color:#58a6ff}
 footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262d;text-align:center}
 </style></head><body>
 
@@ -99,17 +88,12 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <select id="minPredScore"><option value="0">不限</option><option value="30">30+</option><option value="50" selected>50+</option><option value="70">70+</option><option value="85">85+</option></select>
 <label>显示</label>
 <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
-<label>数据源</label>
-<select id="dataSource"><option value="auto">🔄 自动</option><option value="mexc">🟢 MEXC</option><option value="huobi">🟡 Huobi</option><option value="okx">🟢 OKX</option><option value="gateio">🟢 Gate.io</option><option value="proxy">🚀 本地代理</option><option value="ws">⚡ Binance WS</option><option value="rest">📡 Binance REST</option><option value="cg">🦎 CoinGecko</option></select>
 <button id="pauseBtn" class="gray">⏸ 暂停</button>
 <button id="clearBtn" class="gray">清除</button>
 </div>
 
 <div class="info-bar">
-<span id="btcInfo" style="font-weight:600">BTC --</span>
-<span id="marketSentiment">涨跌比 --</span>
-<span>信号 <strong id="sigCount">0</strong></span>
-<span>K线 <strong id="klineCount">0</strong></span>
+<span>账户: ~300 RMB ($42)</span><span>信号 <strong id="sigCount">0</strong></span><span>K线 <strong id="klineCount">0</strong></span>
 <span id="topMover" style="flex:1;text-align:right"></span>
 </div>
 
@@ -118,8 +102,6 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <div class="tab-btn" data-tab="buy">🚀 买入加速 <span class="badge" id="buyBadge">--</span></div>
 <div class="tab-btn" data-tab="sell">📉 卖出压力 <span class="badge" id="sellBadge">--</span></div>
 <div class="tab-btn" data-tab="watchlist">👁 自选 <span class="badge" id="watchBadge">0</span></div>
-<div class="tab-btn" data-tab="trending">🔥 热搜</div>
-<div class="tab-btn" data-tab="news">📰 快讯</div>
 </div>
 
 <div class="table-wrap" id="tableWrap">
@@ -131,27 +113,9 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none">
-<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center;flex-wrap:wrap">
-<input id="watchSearch" type="text" placeholder="输入币名搜索添加 (如 BTC, ETH)" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
-<button id="watchAddBtn" class="gray" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
-<div id="watchSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;margin-top:2px"></div>
-</div>
-<div style="position:relative">
-<div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
-<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名或搜索添加自选</div></td></tr></tbody></table></div></div></div>
-</div></div>
-
-<div id="newsPanel" style="display:none">
-<div style="padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;font-size:12px;color:#8b949e;display:flex;justify-content:space-between">
-<span>📰 币圈快讯</span>
-<span id="newsCount" style="color:#484f58">加载中...</span>
-</div>
-<div id="newsBody" style="padding:4px 12px;max-height:400px;overflow-y:auto;font-size:11px;scrollbar-width:thin;scrollbar-color:#30363d transparent">
-<div style="color:#484f58;text-align:center;padding:20px">加载新闻中...</div>
-</div>
-</div>
+<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -165,8 +129,7 @@ const S={
   symbols:{},snapshots:[],klines:{},klineFetching:new Set(),
   alerts:[],lastAlertKeys:{},watchlist:[],
   currentTab:'predict',alertTimer:null,klineTimer:null,restTimer:null,
-  reconnectTimer:null,connTimeout:null,started:false,
-  manualSource:'auto' // 'auto' | 'mexc' | 'huobi' | 'okx' | 'gateio' | 'proxy' | 'ws' | 'rest' | 'cg' 
+  reconnectTimer:null,connTimeout:null,started:false
 };
 const $=id=>document.getElementById(id);
 const fmtP=v=>{if(v==null)return'--';const n=+v;if(n<0.00001)return'$'+n.toFixed(8);if(n<0.001)return'$'+n.toFixed(6);if(n<1)return'$'+n.toFixed(4);if(n<50)return'$'+n.toFixed(2);return'$'+n.toLocaleString(undefined,{maxFractionDigits:2,minFractionDigits:2})};
@@ -177,138 +140,12 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
 
-// ---- CoinGecko Trending with Sentiment ----
-function fetchTrending(){
-  S.trendingData=null;S.trendingCoins=[];
-  $('loadingMsg').style.display='';$('mainTable').style.display='none';
-  $('loadingMsg').innerHTML='🔄 获取热搜数据...<br><span style="font-size:12px;color:#8b949e">⏳ CoinGecko 趋势 + 市场情绪分析</span>';
-  fetch('https://api.coingecko.com/api/v3/search/trending',{signal:(c=>{setTimeout(()=>c.abort(),15000);return c.signal})(new AbortController())})
-    .then(r=>r.json()).then(d=>{
-    if(!d.coins||!d.coins.length){$('loadingMsg').innerHTML='⚠️ 获取热搜失败';return}
-    S.trendingData=d;
-    const coins=[];
-    for(let i=0;i<Math.min(d.coins.length,25);i++){
-      const c=d.coins[i].item;
-      const sym=(c.symbol||'').toUpperCase()+'USDT';
-      const ls=S.symbols[sym];
-      const ch=ls?ls.change:(c.data&&c.data.price_change_percentage_24h?c.data.price_change_percentage_24h.usd:0);
-      const pr=ls?ls.price:(c.data&&c.data.price?parseFloat(c.data.price.replace(/[$,]/g,'')):0);
-      const vl=ls?ls.quoteVol:(c.data&&c.data.total_volume?parseFloat(c.data.total_volume.replace(/[$,]/g,'')):0);
-      const ps=ls?ls.predictScore:0;
-      const sd=ls?ls.scoreDetail:[];
-      // Attitude/sentiment
-      let st='中性',sc='#8b949e',si='⚪';
-      if(ps>=50||ch>3){st='看涨';sc='#3fb950';si='🟢'}
-      else if(ch<-3||(ls&&ls.signal==='sell')){st='看跌';sc='#f85149';si='🔴'}
-      else if(ps>=30||ch>0){st='偏多';sc='#58a6ff';si='🟦'}
-      else if(ch<0){st='偏空';sc='#d29922';si='🟡'}
-      coins.push({r:i+1,id:c.id,n:c.name,sym:symbol:c.symbol.toUpperCase(),pr,ch,vl,mr:c.market_cap_rank||'-',sc:d.coins.length-i,ps,sd,st,sc,si,loc:!!ls});
-    }
-    S.trendingCoins=coins;
-    if(S.currentTab==='trending')renderTrending();
-  }).catch(()=>{$('loadingMsg').innerHTML='⚠️ 获取热搜失败<br><span style="font-size:12px;color:#8b949e">可点重新加载重试</span>'});
-}
-function renderTrending(){
-  $('loadingMsg').style.display='none';$('mainTable').style.display='';
-  const tb=$('tableBody');
-  if(!S.trendingCoins||!S.trendingCoins.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:#484f58;padding:30px">暂无热搜数据</td></tr>';return}
-  $('mainTable').querySelector('thead').innerHTML='<tr><th>#</th><th>币种</th><th>热度</th><th>价格</th><th>态度</th><th>涨跌幅</th><th>成交额</th><th>排名</th><th>预测</th><th>来源</th></tr>';
-  let h='';
-  for(const c of S.trendingCoins){
-    const rc=c.r<=3?'rank-top3':c.r<=10?'rank-top10':'';
-    const ht=c.sc>=20?'🔥🔥🔥':c.sc>=10?'🔥🔥':'🔥';
-    const p2=c.ps||0,pc=p2>=70?'#d2a8ff':p2>=50?'#58a6ff':p2>=30?'#d29922':'#484f58';
-    h+='<tr><td class="'+rc+'">'+c.r+'</td><td style="text-align:left;font-weight:600">'+(c.n||c.symbol)+'<span class="text-muted" style="font-size:10px;margin-left:4px">'+c.symbol+'</span></td>'
-      +'<td style="font-size:13px">'+ht+'</td><td>'+(c.pr?fmtP(c.pr):'--')+'</td>'
-      +'<td><span class="tag" style="background:'+c.sc+'22;color:'+c.sc+'">'+c.si+' '+c.st+'</span></td>'
-      +'<td class="'+(c.ch>=0?'text-up':'text-down')+'">'+(c.ch?fmtC(c.ch):'--')+'</td>'
-      +'<td>'+(c.vl?fmtV(c.vl):'--')+'</td><td>#'+c.mr+'</td>'
-      +'<td><strong style="color:'+pc+'">'+(p2||0)+'</strong></td>'
-      +'<td style="font-size:10px;color:#8b949e">'+(c.loc?'有数据':'仅热搜')+'</td></tr>';
-  }
-  tb.innerHTML=h;
-}
-
-// ---- Crypto News (multi-source) ----
-function renderNews(){
-  const bd=$('newsBody');
-  if(S.news&&S.news.length){
-    $('newsCount').textContent=S.news.length+'条';
-    let h='';
-    for(const n of S.news){
-      const ts=new Date(n.t);
-      const now=new Date();
-      const isToday=ts.toDateString()===now.toDateString();
-      const time=isToday?ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0'):(ts.getMonth()+1)+'/'+ts.getDate();
-      let cat='news',catName='要闻',catCls='news-cat-news';
-      if(n.src==='cointelegraph'){cat='news';catName='CoinTelegraph'}
-      else if(n.src==='event'){cat='event';catName='活动'}
-      h+='<div class="news-item"><span class="news-time">'+time+'</span><span class="news-cat '+catCls+'">'+catName+'</span><a class="news-title" href="'+n.url+'" target="_blank" rel="noopener">'+n.tt+'</a></div>';
-    }
-    bd.innerHTML=h;
-  } else {
-    bd.innerHTML='<div style="color:#484f58;text-align:center;padding:20px">正在加载新闻...</div>';
-    $('newsCount').textContent='加载中...';
-    fetchNews();
-  }
-}
-function fetchNews(){
-  // Source 1: CoinTelegraph via rss2json (CORS-friendly)
-  fetch('https://api.rss2json.com/v1/api.json?rss_url=https://cointelegraph.com/rss',{signal:(c=>{setTimeout(()=>c.abort(),10000);return c.signal})(new AbortController())})
-    .then(r=>r.json()).then(d=>{
-    if(!d.items||!d.items.length)throw new Error('no data');
-    const items=[];
-    for(const item of d.items.slice(0,30)){
-      items.push({
-        tt:item.title,
-        url:item.link,
-        t:new Date(item.pubDate).getTime(),
-        src:'cointelegraph',
-        desc:(item.description||'').replace(/<[^>]*>/g,'').substring(0,120)
-      });
-    }
-    S.news=items;
-    if(S.currentTab==='news')renderNews();
-  }).catch(()=>{
-    // Source 2: Try Binance API as fallback
-    fetch('https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageSize=15&pageNo=1',{signal:(c=>{setTimeout(()=>c.abort(),8000);return c.signal})(new AbortController())})
-      .then(r=>r.json()).then(d=>{
-      if(!d.data||!d.data.catalogs)throw new Error('no data');
-      const items=[];
-      for(const cat of d.data.catalogs){
-        for(const a of cat.articles.slice(0,5)){
-          items.push({tt:a.title,url:'https://www.binance.com/en/support/announcement/detail/'+a.code,t:a.releaseDate,src:'event'});
-        }
-      }
-      items.sort((a,b)=>b.t-a.t);
-      S.news=items.slice(0,30);
-      if(S.currentTab==='news')renderNews();
-    }).catch(()=>{
-      // Source 3: Local alerts fallback
-      const items=[];
-      const now=Date.now();
-      const topAlerts=S.alerts.slice(0,10);
-      for(const a of topAlerts){
-        items.push({tt:('['+a.type+'] '+a.label+': '+a.msg),url:'',t:a.time,src:'alert'});
-      }
-      S.news=items;
-      if(S.currentTab==='news')renderNews();
-      $('newsCount').textContent='本地信号';
-    });
-  });
-}
-
-
-function loadSource(){try{const d=localStorage.getItem('predSource');if(d)S.manualSource=d;$('dataSource').value=S.manualSource}catch(e){}}
-function saveSource(){localStorage.setItem('predSource',S.manualSource)}
-
 // ====== Connection Manager (Multi-source) ======
 const DOMAINS = {
-  ws: ['stream.binance.com:443','stream.binance.io:443','stream.binance.com:9443','stream.binance.io:9443'],
+  ws: ['stream.binance.com:9443','stream.binance.io:9443'],
   rest: ['api.binance.com','www.binance.com','api.binance.io','api1.binance.com','api2.binance.com','api3.binance.com'],
   mexc: ['api.mexc.com'],
   huobi: ['api.huobi.pro'],
-  gateio: ['api.gateio.ws'],
 };
 
 function status(dot,txt){$('statusDot').className='dot '+dot;$('statusText').textContent=txt}
@@ -324,88 +161,56 @@ async function connect(){
   $('reconnectBtn').style.display='none';
   $('loadingMsg').style.display='';$('mainTable').style.display='none';
 
-  const manual = S.manualSource;
-  let connected = false;
+  // Phase 0: Local proxy (fast - connect fail in ~200ms if not running)
+  try{
+    const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
+    if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
+      processBinance(d);initConnected("proxy","🚀 本地代理","mode-rest");
+      if(S.restTimer)clearInterval(S.restTimer);
+      S.restTimer=setInterval(async()=>{if(!S.paused)try{const r2=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),5000);return c.signal})(new AbortController())});if(r2.ok)processBinance(await r2.json())}catch(e){}},5000);
+      return
+    }}
+  }catch(e){}
 
-  // If user selected a specific source, try only that one
-  if (manual !== 'auto') {
-    $('loadingMsg').querySelector('span').textContent = '⏳ 正在连接: ' + $('dataSource').options[$('dataSource').selectedIndex].text;
-    if (manual === 'proxy') {
-      try{
-        const r=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),2000);return c.signal})(new AbortController())});
-        if(r.ok){const d=await r.json();if(Array.isArray(d)&&d.length>0){
-          processBinance(d);initConnected("proxy","🚀 本地代理","mode-rest");
-          if(S.restTimer)clearInterval(S.restTimer);
-          S.restTimer=setInterval(async()=>{if(!S.paused)try{const r2=await fetch("http://127.0.0.1:3456/api/v3/ticker/24hr",{signal:(c=>{setTimeout(()=>c.abort(),5000);return c.signal})(new AbortController())});if(r2.ok)processBinance(await r2.json())}catch(e){}},5000);
-          connected=true;
-        }}
-      }catch(e){}
-    } else if (manual === 'ws') {
-      // Try WebSocket first, then fallback to REST
-      for(let i=0;i<DOMAINS.ws.length;i++){
-        const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
-        status('busy','WS ('+(i+1)+'/'+DOMAINS.ws.length+')');
-        const ok=await tryWS(url);
-        if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');connected=true;break}
-      }
-      if(!connected){
-        status('busy','WS失败,尝试REST...');
-        for(let i=0;i<DOMAINS.rest.length;i++){
-          const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-          const data=await tryREST(url);
-          if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');connected=true;break}
-        }
-      }
-    } else if (manual === 'rest') {
-      for(let i=0;i<DOMAINS.rest.length;i++){
-        const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-        status('busy','REST ('+(i+1)+'/'+DOMAINS.rest.length+')');
-        const data=await tryREST(url);
-        if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');connected=true;break}
-      }
-    } else if (manual === 'mexc') { connected = await tryMEXC(); }
-    else if (manual === 'huobi') { connected = await tryHuobi(); }
-    else if (manual === 'okx') { connected = await tryOKX(); }
-    else if (manual === 'gateio') { connected = await tryGateio(); }
-    else if (manual === 'cg') { connected = await tryCoinGecko(); }
-
-    if (!connected) {
-      status('off','❌ '+$('dataSource').options[$('dataSource').selectedIndex].text+' 连不上');
-      setMode('连接失败','mode-err');
-      $('reconnectBtn').style.display='';
-      $('loadingMsg').innerHTML='⚠️ 所选数据源('+$('dataSource').options[$('dataSource').selectedIndex].text+')连接失败 · 尝试选择其他数据源';
-      return;
-    }
-    return;
-  }
-
-  // Auto mode: try sources in order
-  // Phase 1: Binance WebSocket (no CORS, same as original)
+  // Phase 1: WebSocket (takes ~5s per attempt)
   for(let i=0;i<DOMAINS.ws.length;i++){
     const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
-    status('busy','Binance WS... ('+(i+1)+'/'+DOMAINS.ws.length+')');
     const ok=await tryWS(url);
-    if(ok){initConnected('ws','⚡ Binance WS 实时','mode-ws');S.dataSource='ws';return}
+    if(ok){initConnected('ws','⚡ WebSocket 实时','mode-ws');return}
   }
 
-  // Phase 2: Binance REST (standard HTTPS, CORS supported)
+  // Phase 2: Binance REST
   for(let i=0;i<DOMAINS.rest.length;i++){
     const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-    status('busy','Binance REST... ('+(i+1)+'/'+DOMAINS.rest.length+')');
+    status('busy','尝试 REST...('+(i+1)+'/'+DOMAINS.rest.length+')');
     const data=await tryREST(url);
-    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');S.dataSource='rest';return}
+    if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');return}
   }
 
-  // Phase 3: CoinGecko (CORS-friendly, always works)
-  status('busy','CoinGecko...');
-  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');S.dataSource='cg';return}
+  // Phase 3: CoinGecko
+  status('busy','连接 CoinGecko...');
+  if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');return}
+
+  // Phase 4: OKX
+  status('busy','连接 OKX...');
+  if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');return}
+  
+  // Phase 5: MEXC (Chinese exchange, usually accessible)
+  status('busy','连接 MEXC...');
+  if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');return}
+  
+  // Phase 6: Huobi/HTX
+  status('busy','连接 Huobi...');
+  if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');return}
 
   // All failed
-  status('off','❌ 全部失败');
+  status('off','❌ 所有数据源连不上');
   setMode('连接失败','mode-err');
   $('reconnectBtn').style.display='';
-  $('loadingMsg').innerHTML='⚠️ 全部失败 · 试试手动选「📡 Binance REST」或「⚡ Binance WS」';
-}function initConnected(mode,label,cls){
+  $('loadingMsg').innerHTML='⚠️ 全部失败 · 解决: ① 终端运行 run-proxy.sh ② 换 DNS 1.1.1.1 ③ 用 Chrome 打开 ④ VPN';
+}
+
+function initConnected(mode,label,cls){
   S.connected=true;S.dataSource=mode;
   status('on','已连接');setMode(label,cls);
   $('reconnectBtn').style.display='none';
@@ -538,13 +343,8 @@ function processOKX(data){
 function processBinance(arr){
   const now=Date.now();let count=0;
   for(const t of arr){
-    // Support both WS (short) and REST (long) field names
-    const sym=t.s||t.symbol;if(!sym||!sym.endsWith('USDT'))continue;
-    const price=+(t.c||t.lastPrice||0);
-    const open=+(t.o||t.openPrice||0);
-    const change=open>0?((price-open)/open)*100:0;
-    const qVol=+(t.q||t.quoteVolume||0);
-    const vol=+(t.v||t.volume||0);
+    const sym=t.s;if(!sym||!sym.endsWith('USDT'))continue;
+    const price=+t.c||0,open=+t.o||0,change=open>0?((price-open)/open)*100:0,qVol=+t.q||0,vol=+t.v||0;
     count++;
     if(!S.symbols[sym])S.symbols[sym]={price,change,vol,quoteVol:qVol,prevVol:0,velocity:0,surge:0,surgePct:0,volChange:0,priceTrend:0,buyScore:0,sellScore:0,signal:'neutral',predictScore:0};
     const s=S.symbols[sym];const pVol=s.vol||0;
@@ -600,130 +400,25 @@ async function fetchKlines(sym){
 function calcMA(d,p){if(!d||d.length<p)return null;return d.slice(-p).reduce((a,b)=>a+b.close,0)/p}
 function calcRSI(d,p){p=p||14;if(!d||d.length<p+1)return 50;const c=d.map(x=>x.close);let g=0,l=0;for(let i=c.length-p;i<c.length;i++){const d2=c[i]-c[i-1];if(d2>0)g+=d2;else l-=d2}if(l===0)return 100;return 100-100/(1+g/l)}
 
-function calcEMA(data,p){
-  if(!data||data.length<p)return null;
-  const k=2/(p+1);let ema=data.slice(0,p).reduce((a,b)=>a+b.close,0)/p;
-  for(let i=p;i<data.length;i++)ema=data[i].close*k+ema*(1-k);
-  return ema;
-}
-function calcBB(data,p){
-  if(!data||data.length<p)return{m:null,u:null,l:null,bw:0};
-  const s=data.slice(-p),m=s.reduce((a,b)=>a+b.close,0)/p;
-  const sd=Math.sqrt(s.reduce((a,b)=>a+(b.close-m)**2,0)/p);
-  return{m,u:m+2*sd,l:m-2*sd,bw:(m+2*sd-(m-2*sd))/m};
-}
-function calcMACD(data){
-  const r={m:null,s:null,h:null,d:0};
-  if(!data||data.length<35)return r;
-  const e12=calcEMA(data,12),e26=calcEMA(data,26);
-  if(e12===null||e26===null)return r;
-  r.m=e12-e26;
-  // Signal = EMA of MACD(9)
-  const macds=[];let emad=0;
-  for(let i=0;i<data.length;i++){
-    const v=calcEMA(data.slice(0,i+1),12)||e12;
-    const v2=calcEMA(data.slice(0,i+1),26)||e26;
-    macds.push(v-v2);
-  }
-  if(macds.length<9)return r;
-  r.s=macds.slice(-9).reduce((a,b)=>a+b,0)/9;
-  // Alternative: use simple approach
-  const mHist=macds[macds.length-1]-r.s;
-  const pHist=macds.length>1?macds[macds.length-2]-r.s:0;
-  r.h=mHist;
-  // Divergence: compare price lows vs MACD lows over last 14 bars
-  const n=14;if(data.length<n)return r;
-  const pSlice=data.slice(-n),mSlice=macds.slice(-n);
-  const pl=Math.min(...pSlice.map(d=>d.low)),pIdx=pSlice.findIndex(d=>d.low===pl);
-  const ml=Math.min(...mSlice);const mIdx=mSlice.indexOf(ml);
-  if(pIdx>0&&mIdx>pIdx&&pl<data[data.length-n-1]&&pl<pSlice[0]&&ml>mSlice[0])r.d=1;
-  if(pIdx>0&&mIdx<pIdx&&pl>data[data.length-n-1]&&pl>pSlice[0]&&ml<mSlice[0])r.d=-1;
-  return r;
-}
-function calcATR(data,p){
-  if(!data||data.length<p+1)return{v:null,r:false};
-  const trs=[];for(let i=1;i<data.length;i++)trs.push(Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close)));
-  const atr=trs.slice(-p).reduce((a,b)=>a+b,0)/p;
-  const prevAtr=trs.slice(-p-1,-1).reduce((a,b)=>a+b,0)/p;
-  return{v:atr,r:atr>prevAtr*1.05};
-}
-function calcPattern(data){
-  if(!data||data.length<3)return{n:'',s:0};
-  const c=data[data.length-1],p1=data[data.length-2],p2=data[data.length-3];
-  const body=Math.abs(c.close-c.open),range=c.high-c.low,prevBody=Math.abs(p1.close-p1.open);
-  const upperWick=c.high-Math.max(c.close,c.open),lowerWick=Math.min(c.close,c.open)-c.low;
-  // Doji: tiny body
-  if(range>0&&body/range<0.08){return{n:'十字星',s:upperWick>lowerWick*2?5:-5}}
-  // Hammer: long lower wick, small body, at bottom
-  if(body/range<0.35&&lowerWick>body*2&&upperWick<body&&c.close<c.open&&c.close<data.slice(-10).reduce((a,b)=>a<b.close?a:b.close,Infinity)*1.02)return{n:'锤子线',s:12};
-  // Shooting star: long upper wick
-  if(body/range<0.35&&upperWick>body*2&&lowerWick<body&&c.close>c.open)return{n:'射击星',s:-8};
-  // Bullish engulfing
-  if(c.close>c.open&&p1.open>p1.close&&c.open<p1.close&&c.close>p1.open&&body>prevBody*1.2)return{n:'看涨吞没',s:15};
-  // Bearish engulfing
-  if(c.close<c.open&&p1.open<p1.close&&c.open>p1.close&&c.close<p1.open&&body>prevBody*1.2)return{n:'看跌吞没',s:-10};
-  // Three white soldiers
-  const p3=Math.abs(p2.close-p2.open);
-  if(c.close>c.open&&p1.close>p1.open&&p2.close>p2.open&&c.close>p1.close&&p1.close>p2.close&&body>p3*0.8)return{n:'三白兵',s:12};
-  return{n:'',s:0};
-}
-function calcConsec(data){
-  const n=Math.min(data.length,10),g=data.slice(-n);
-  let gr=0,re=0;
-  for(let i=g.length-1;i>=0;i--){if(g[i].close>=g[i].open)gr++;else break}
-  for(let i=g.length-1;i>=0;i--){if(g[i].close<g[i].open)re++;else break}
-  return{g:gr,r:re};
-}
 function calcScore(data){
-  if(!data||data.length<15)return{s:0,d:[]};
+  if(!data||data.length<15)return 0;
   const c=data[data.length-1].close;
   const m5=calcMA(data,5),m10=calcMA(data,10),m20=calcMA(data,20),rsi=calcRSI(data,14);
   const v5=data.slice(-5).reduce((a,b)=>a+b.volume,0)/5,v10=data.slice(-10,-5).reduce((a,b)=>a+b.volume,0)/5,vr=v10>0?v5/v10:1;
-  let sc=0;const d=[];
-  // --- Original factors ---
-  if(m5!==null&&m10!==null&&m5>m10){sc+=15;d.push('均线多头+15')}
-  if(m10!==null&&m20!==null&&m10>m20){sc+=10;d.push('中线走强+10')}
-  if(m5!==null&&c>m5*1.001){sc+=8;d.push('破MA5+8')}
-  if(m20!==null&&c>m20*1.002){sc+=7;d.push('破MA20+7')}
-  if(vr>1.8){sc+=15;d.push('量比放大+15')}else if(vr>1.3){sc+=10;d.push('量比放大+10')}else if(vr>1.1){sc+=5;d.push('量比微增+5')}
-  if(rsi<30){sc+=20;d.push('RSI超卖+20')}else if(rsi<40){sc+=15;d.push('RSI偏低+15')}else if(rsi<50){sc+=10;d.push('RSI中性偏弱+10')}else if(rsi<60){sc+=5;d.push('RSI中性+5')}else if(rsi>75){sc-=15;d.push('RSI超买-15')}else if(rsi>70){sc-=8;d.push('RSI偏高-8')}
+  let sc=0;
+  if(m5!==null&&m10!==null&&m5>m10)sc+=15;
+  if(m10!==null&&m20!==null&&m10>m20)sc+=10;
+  if(m5!==null&&c>m5*1.001)sc+=8;
+  if(m20!==null&&c>m20*1.002)sc+=7;
+  if(vr>1.8)sc+=15;else if(vr>1.3)sc+=10;else if(vr>1.1)sc+=5;
+  if(rsi<30)sc+=20;else if(rsi<40)sc+=15;else if(rsi<50)sc+=10;else if(rsi<60)sc+=5;else if(rsi>75)sc-=15;else if(rsi>70)sc-=8;
   const m5m=data.length>=6?(c-data[data.length-6].close)/c*100:0;
-  if(m5m>3){sc+=15;d.push('5m拉升+15')}else if(m5m>1.5){sc+=10;d.push('5m拉升+10')}else if(m5m>0){sc+=5;d.push('5m微涨+5')}else if(m5m<-2){sc-=5;d.push('5m下跌-5')}
-  if(v5>0){const vr2=data[data.length-1].volume/v5;if(vr2>3){sc+=10;d.push('末K放量+10')}else if(vr2>2){sc+=6;d.push('末K放量+6')}else if(vr2>1.5){sc+=3;d.push('末K放量+3')}}
-  const p10=data.slice(-10);const rh=Math.max(...p10.map(x=>x.high)),rl=Math.min(...p10.map(x=>x.low));
+  if(m5m>3)sc+=15;else if(m5m>1.5)sc+=10;else if(m5m>0)sc+=5;else if(m5m<-2)sc-=5;
+  if(v5>0){const vr2=data[data.length-1].volume/v5;if(vr2>3)sc+=10;else if(vr2>2)sc+=6;else if(vr2>1.5)sc+=3}
+  const p10=data.slice(-10);const rh=Math.max(...p10.map(d=>d.high)),rl=Math.min(...p10.map(d=>d.low));
   const pir=rh-rl>0?(c-rl)/(rh-rl):0.5;
-  if(pir<0.2&&vr>1.5){sc+=10;d.push('低位放量+10')}
-  // --- Bollinger Bands ---
-  const bb=calcBB(data,20);
-  if(bb.m!==null){
-    if(c<bb.l){sc+=20;d.push('布林下轨+20')}else if(c<bb.m-(bb.m-bb.l)*0.5){sc+=8;d.push('布林偏下+8')}
-    if(c>bb.u){sc-=15;d.push('布林上轨-15')}else if(c>bb.m+(bb.u-bb.m)*0.5){sc-=5;d.push('布林偏上-5')}
-    if(bb.bw>0.15){sc+=5;d.push('布林扩口+5')}
-  }
-  // --- MACD ---
-  const md=calcMACD(data);
-  if(md.m!==null&&md.s!==null){
-    if(md.m>md.s){sc+=10;d.push('MACD金叉+10')}
-    if(md.h>0){sc+=5;d.push('MACD动量+5')}
-    if(md.d>0){sc+=20;d.push('底背离+20')}
-    if(md.d<0){sc-=15;d.push('顶背离-15')}
-  }
-  // --- ATR ---
-  const atr=calcATR(data,14);
-  if(atr.v!==null&&atr.v>0){
-    const last=data[data.length-1],prev=data[data.length-2];
-    const ltr=Math.max(last.high-last.low,Math.abs(last.high-prev.close),Math.abs(last.low-prev.close));
-    if(ltr>atr.v*1.5){sc+=10;d.push('ATR突破+10')}
-    if(atr.r){sc+=5;d.push('波动扩大+5')}
-  }
-  // --- Consecutive candles ---
-  const cns=calcConsec(data);
-  if(cns.g>=3){const add=cns.g>=5?15:10;sc+=add;d.push('连阳+'+add)}
-  if(cns.r>=3){const sub=cns.r>=5?10:5;sc-=sub;d.push('连阴-'+sub)}
-  // --- Candlestick patterns ---
-  const pat=calcPattern(data);
-  if(pat.s!==0){sc+=pat.s;d.push(pat.n+(pat.s>0?'+':'')+pat.s)}
-  return{s:Math.max(0,Math.min(100,Math.round(sc))),d:d};
+  if(pir<0.2&&vr>1.5)sc+=10;
+  return Math.max(0,Math.min(100,Math.round(sc)));
 }
 
 async function updateKlines(){
@@ -733,7 +428,7 @@ async function updateKlines(){
   await Promise.allSettled(top.map(([sym])=>{
     if(S.klineFetching.has(sym))return;
     S.klineFetching.add(sym);
-    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym]){const r=calcScore(d);S.symbols[sym].predictScore=r.s;S.symbols[sym].scoreDetail=r.d}}}).finally(()=>S.klineFetching.delete(sym));
+    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym])S.symbols[sym].predictScore=calcScore(d)}}).finally(()=>S.klineFetching.delete(sym));
   }));
   $('klineCount').textContent=Object.keys(S.klines).length;
   render();
@@ -775,18 +470,10 @@ function render(){
     const kd=S.klines[sym];
     if(kd&&kd.length>=15){const m5=calcMA(kd,5),m10=calcMA(kd,10),m20=calcMA(kd,20),rsi=calcRSI(kd,14);const f1=m5&&m10?(m5>m10?'🟢':'🔴'):'',f2=m10&&m20?(m10>m20?'🟢':'🔴'):'',f3=rsi<40?'🟢':rsi>70?'🔴':'⚪';tech='<span style="font-size:10px" title="RSI:'+(rsi||'-')+'">'+f1+f2+f3+' '+(rsi?rsi.toFixed(0):'--')+'</span>'}
     const c2=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
-    const sd=s.scoreDetail||[];const st=sd.length?sd.join(' · '):'暂无K线数据';
-    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td title="'+st+'" style="cursor:help"><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
+    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
   }
   tb.innerHTML=h;
   if(r.length>0){const[sym,s]=r[0];$('topMover').innerHTML='🔮 首: <strong>'+sym.replace('USDT','')+'</strong> 分'+(s.predictScore||0)+' '+fmtC(s.change)}
-  // Update info bar: BTC price + 涨跌比
-  const btc=S.symbols['BTCUSDT'];
-  if(btc){$('btcInfo').innerHTML='BTC <span class="'+(btc.change>=0?'text-up':'text-down')+'">'+fmtP(btc.price)+' '+fmtC(btc.change)+'</span>'}
-  let up=0,dn=0;
-  for(const[sym2,s2]of Object.entries(S.symbols)){if(s2.change>0.1)up++;else if(s2.change<-0.1)dn++}
-  const total=up+dn||1;
-  $('marketSentiment').innerHTML='涨跌比 <strong class="'+(up>=dn?'text-up':'text-down')+'">'+up+':'+dn+'</strong>';
 }
 
 function updateBadges(){$('buyBadge').textContent=getRanking('buy').length;$('sellBadge').textContent=getRanking('sell').length;$('predBadge').textContent=Object.entries(S.symbols).filter(([sym,s])=>(s.predictScore||0)>=(parseFloat($('minPredScore').value)||0)).length;$('sigCount').textContent=getRanking('buy').length+getRanking('sell').length}
@@ -805,40 +492,8 @@ function renderWatchlist(){
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render();clearSuggestions()}
+function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
-
-// ---- Watchlist search ----
-function watchSearchInput(){
-  const input=$('watchSearch'),v=(input.value||'').trim().toUpperCase();
-  const box=$('watchSuggestions');
-  if(!v||!S.connected){box.style.display='none';return}
-  const matches=Object.keys(S.symbols).filter(s=>s.includes(v)).filter(s=>!S.watchlist.some(w=>w.sym===s)).slice(0,15);
-  if(!matches.length){box.style.display='none';return}
-  box.style.display='block';
-  box.innerHTML=matches.map(s=>'<div class="ws-item" data-sym="'+s+'" style="padding:5px 10px;font-size:12px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d;display:flex;justify-content:space-between"><span>'+s.replace('USDT','')+'</span><span class="text-muted">'+(S.symbols[s]?fmtP(S.symbols[s].price):'')+'</span></div>').join('');
-  box.querySelectorAll('.ws-item').forEach(el=>{
-    el.addEventListener('click',()=>addWatch(el.dataset.sym));
-    el.addEventListener('mouseenter',()=>el.style.background='rgba(255,255,255,0.05)');
-    el.addEventListener('mouseleave',()=>el.style.background='');
-  });
-}
-function clearSuggestions(){$('watchSuggestions').style.display='none';$('watchSearch').value=''}
-function watchAddClick(){
-  const input=$('watchSearch'),v=(input.value||'').trim().toUpperCase();
-  if(!v)return;
-  const matches=Object.keys(S.symbols).filter(s=>s.includes(v));
-  if(matches.length===1){addWatch(matches[0]);return}
-  if(matches.length>1){watchSearchInput();return}
-  // Try exact match
-  const exact='USDT'===v.slice(-4)?v:v+'USDT';
-  if(S.symbols[exact]){addWatch(exact);return}
-  // Show no results
-  const box=$('watchSuggestions');
-  box.style.display='block';
-  box.innerHTML='<div style="padding:10px;color:#8b949e;font-size:12px;text-align:center">未找到: '+v+'</div>';
-  setTimeout(()=>box.style.display='none',2000);
-}
 
 
 // ---- MEXC (Chinese exchange, Binance-like API) ----
@@ -936,25 +591,12 @@ function toast(t,m){const d=document.createElement('div');d.className='toast '+t
 function startTimers(){stopTimers();S.alertTimer=setInterval(checkAlerts,6000);S.klineTimer=setInterval(updateKlines,35000)}
 function stopTimers(){if(S.alertTimer){clearInterval(S.alertTimer);S.alertTimer=null}if(S.klineTimer){clearInterval(S.klineTimer);S.klineTimer=null}}
 
-document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';$('newsPanel').style.display='none';S.currentTab='watchlist';renderWatchlist()}else if(t==='news'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='none';$('newsPanel').style.display='';S.currentTab='news';renderNews()}else if(t==='trending'){$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab='trending';fetchTrending()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';$('newsPanel').style.display='none';S.currentTab=t;render()}})});
+document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';S.currentTab='watchlist';renderWatchlist()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';S.currentTab=t;render()}})});
 document.addEventListener('click',e=>{const l=e.target.closest('.sym-link');if(!l)return;e.preventDefault();addWatch(l.dataset.sym)});
-$('reconnectBtn').addEventListener('click',function(){
-  if(S.currentTab==='trending'){fetchTrending()}
-  else if(S.currentTab==='news'){S.news=null;renderNews()}
-  else{connect()}
-});
+$('reconnectBtn').addEventListener('click',connect);
 $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textContent=S.paused?'▶ 继续':'⏸ 暂停'});
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
-$('dataSource').addEventListener('change',function(){
-  S.manualSource=this.value;
-  saveSource();
-  connect();
-});
-$('watchSearch').addEventListener('input',watchSearchInput);
-$('watchSearch').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();watchAddClick()}});
-$('watchAddBtn').addEventListener('click',watchAddClick);
-document.addEventListener('click',function(e){if(!e.target.closest('#watchlistPanel')&&!e.target.closest('#watchSearch'))clearSuggestions()});
 
-loadWatch();loadSource();connect();
+loadWatch();connect();
 </script></body></html>
