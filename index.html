@@ -88,6 +88,8 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <select id="minPredScore"><option value="0">不限</option><option value="30">30+</option><option value="50" selected>50+</option><option value="70">70+</option><option value="85">85+</option></select>
 <label>显示</label>
 <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
+<label>数据源</label>
+<select id="dataSource"><option value="auto">🔄 自动</option><option value="ws">⚡ Binance WS</option><option value="rest">📡 Binance REST</option><option value="cg">🦎 CoinGecko</option><option value="mexc">🟢 MEXC</option><option value="huobi">🟡 Huobi</option><option value="okx">🟢 OKX</option></select>
 <button id="pauseBtn" class="gray">⏸ 暂停</button>
 <button id="clearBtn" class="gray">清除</button>
 </div>
@@ -125,7 +127,7 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <script>
 // ====== State ======
 const S={
-  ws:null,connected:false,paused:false,mode:'init',dataSource:'',
+  ws:null,connected:false,paused:false,mode:'init',dataSource:'',manualSource:'auto',
   symbols:{},snapshots:[],klines:{},klineFetching:new Set(),
   alerts:[],lastAlertKeys:{},watchlist:[],
   currentTab:'predict',alertTimer:null,klineTimer:null,restTimer:null,
@@ -139,6 +141,8 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
+function loadSource(){try{const d=localStorage.getItem('predSource');if(d&&d!=='auto'){S.manualSource=d;$('dataSource').value=d}}catch(e){}}
+function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
 // ====== Connection Manager (Multi-source) ======
 const DOMAINS = {
@@ -172,7 +176,33 @@ async function connect(){
     }}
   }catch(e){}
 
-  // Phase 1: WebSocket (takes ~5s per attempt)
+  
+  // Manual source selection
+  const ms=S.manualSource;
+  if(ms!=='auto'){
+    if(ms==='ws'){
+      for(let i=0;i<DOMAINS.ws.length;i++){
+        const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
+        const ok=await tryWS(url);
+        if(ok){initConnected('ws','⚡ Binance WS','mode-ws');return}
+      }
+    }else if(ms==='rest'){
+      for(let i=0;i<DOMAINS.rest.length;i++){
+        const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
+        const data=await tryREST(url);
+        if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');return}
+      }
+    }else if(ms==='cg'){if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');return}
+    }else if(ms==='mexc'){if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');return}
+    }else if(ms==='huobi'){if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');return}
+    }else if(ms==='okx'){if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');return}}
+    status('off','❌ 所选源不可用');
+    setMode('连接失败','mode-err');
+    $('reconnectBtn').style.display='';
+    $('loadingMsg').innerHTML='⚠️ '+$('dataSource').options[$('dataSource').selectedIndex].text+' 连不上，试试其他源';
+    return;
+  }
+// Phase 1: WebSocket (takes ~5s per attempt)
   for(let i=0;i<DOMAINS.ws.length;i++){
     const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
     const ok=await tryWS(url);
