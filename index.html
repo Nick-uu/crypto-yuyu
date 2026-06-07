@@ -81,28 +81,19 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 
 <div class="controls">
 <label>最小成交额</label>
-<select id="minVolFilter"><option value="0" selected>不限</option><option value="10000">$10K</option><option value="100000">$100K</option><option value="500000">$500K</option><option value="1000000">$1M</option></select>
+<select id="minVolFilter"><option value="0">不限</option><option value="10000">$10K</option><option value="100000">$100K</option><option value="500000" selected>$500K</option><option value="1000000">$1M</option></select>
 <label>币价上限</label>
-<select id="priceCap"><option value="99999" selected>不限</option><option value="10">$10</option><option value="5">$5</option><option value="1">$1</option><option value="0.1">$0.1</option></select>
+<select id="priceCap"><option value="99999">不限</option><option value="10">$10</option><option value="5" selected>$5</option><option value="1">$1</option><option value="0.1">$0.1</option></select>
 <label>最小预测分</label>
-<select id="minPredScore"><option value="0" selected>不限</option><option value="30">30+</option><option value="50">50+</option><option value="70">70+</option><option value="85">85+</option></select>
+<select id="minPredScore"><option value="0">不限</option><option value="30">30+</option><option value="50" selected>50+</option><option value="70">70+</option><option value="85">85+</option></select>
 <label>显示</label>
 <select id="displayCount"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
-<label>数据源</label>
-<select id="dataSource"><option value="auto">🔄 自动</option><option value="ws">⚡ Binance WS</option><option value="rest">📡 Binance REST</option><option value="cg">🦎 CoinGecko</option><option value="mexc">🟢 MEXC</option><option value="huobi">🟡 Huobi</option><option value="okx">🟢 OKX</option></select>
-<label>每笔</label>
-<input id="tradeBudget" type="number" value="100" style="width:55px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:4px 5px;font-size:11px;outline:none">
-<span style="font-size:11px;color:#8b949e">U</span>
 <button id="pauseBtn" class="gray">⏸ 暂停</button>
 <button id="clearBtn" class="gray">清除</button>
 </div>
 
 <div class="info-bar">
-<span id="btcInfo" style="font-weight:600">BTC --</span>
-<span id="marketSentiment">涨跌比 --</span>
-<span>扫描 <strong id="scanCount" style="color:#58a6ff">0</strong></span>
-<span>信号 <strong id="sigCount">0</strong></span>
-<span>K线 <strong id="klineCount">0</strong></span>
+<span>账户: ~300 RMB ($42)</span><span>信号 <strong id="sigCount">0</strong></span><span>K线 <strong id="klineCount">0</strong></span>
 <span id="topMover" style="flex:1;text-align:right"></span>
 </div>
 
@@ -122,13 +113,7 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none">
-<div style="display:flex;gap:6px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #21262d;align-items:center">
-<input id="watchSearch" type="text" placeholder="输入币名搜索添加" style="flex:1;min-width:120px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:6px 10px;font-size:12px;outline:none">
-<button id="watchAddBtn" onclick="watchDoAdd()" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500">+ 添加</button>
-</div>
-<div id="watchSuggestions" style="display:none;background:#161b22;border:1px solid #30363d;border-radius:6px;max-height:200px;overflow-y:auto;font-size:12px;margin:0 16px"></div>
-<div class="table-wrap" style="padding:0">
+<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
 <table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
 <tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
 
@@ -140,7 +125,7 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <script>
 // ====== State ======
 const S={
-  ws:null,connected:false,paused:false,mode:'init',dataSource:'',manualSource:'auto',
+  ws:null,connected:false,paused:false,mode:'init',dataSource:'',
   symbols:{},snapshots:[],klines:{},klineFetching:new Set(),
   alerts:[],lastAlertKeys:{},watchlist:[],
   currentTab:'predict',alertTimer:null,klineTimer:null,restTimer:null,
@@ -154,10 +139,6 @@ const fmtA=v=>{if(v==null)return'--';return(v>=0?'+':'')+(v*100).toFixed(1)+'%/s
 
 function loadWatch(){try{const d=JSON.parse(localStorage.getItem('predWatch'));if(Array.isArray(d))S.watchlist=d}catch(e){}}
 function saveWatch(){localStorage.setItem('predWatch',JSON.stringify(S.watchlist))}
-function loadBudget(){try{var v=localStorage.getItem('predBudget');if(v){$('tradeBudget').value=v}}catch(e){}}
-function saveBudget(){try{localStorage.setItem('predBudget',$('tradeBudget').value)}catch(e){}}
-function loadSource(){try{const d=localStorage.getItem('predSource');if(d&&d!=='auto'){S.manualSource=d;$('dataSource').value=d}}catch(e){}}
-function saveSource(){localStorage.setItem('predSource',S.manualSource)}
 
 // ====== Connection Manager (Multi-source) ======
 const DOMAINS = {
@@ -191,33 +172,7 @@ async function connect(){
     }}
   }catch(e){}
 
-  
-  // Manual source selection
-  const ms=S.manualSource;
-  if(ms!=='auto'){
-    if(ms==='ws'){
-      for(let i=0;i<DOMAINS.ws.length;i++){
-        const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
-        const ok=await tryWS(url);
-        if(ok){initConnected('ws','⚡ Binance WS','mode-ws');return}
-      }
-    }else if(ms==='rest'){
-      for(let i=0;i<DOMAINS.rest.length;i++){
-        const url='https://'+DOMAINS.rest[i]+'/api/v3/ticker/24hr';
-        const data=await tryREST(url);
-        if(data&&startREST(url)){initConnected('rest','📡 Binance REST','mode-rest');return}
-      }
-    }else if(ms==='cg'){if(await tryCoinGecko()){initConnected('cg','🦎 CoinGecko','mode-cg');return}
-    }else if(ms==='mexc'){if(await tryMEXC()){initConnected('mexc','🟢 MEXC','mode-cg');return}
-    }else if(ms==='huobi'){if(await tryHuobi()){initConnected('huobi','🟡 Huobi','mode-cg');return}
-    }else if(ms==='okx'){if(await tryOKX()){initConnected('okx','🟢 OKX','mode-cg');return}}
-    status('off','❌ 所选源不可用');
-    setMode('连接失败','mode-err');
-    $('reconnectBtn').style.display='';
-    $('loadingMsg').innerHTML='⚠️ '+$('dataSource').options[$('dataSource').selectedIndex].text+' 连不上，试试其他源';
-    return;
-  }
-// Phase 1: WebSocket (takes ~5s per attempt)
+  // Phase 1: WebSocket (takes ~5s per attempt)
   for(let i=0;i<DOMAINS.ws.length;i++){
     const url='wss://'+DOMAINS.ws[i]+'/ws/!miniTicker@arr';
     const ok=await tryWS(url);
@@ -388,8 +343,8 @@ function processOKX(data){
 function processBinance(arr){
   const now=Date.now();let count=0;
   for(const t of arr){
-    const sym=t.s||t.symbol;if(!sym||!sym.endsWith('USDT'))continue;
-    const price=+(t.c||t.lastPrice||0),open=+(t.o||t.openPrice||0),change=open>0?((price-open)/open)*100:0,qVol=+(t.q||t.quoteVolume||0),vol=+(t.v||t.volume||0);
+    const sym=t.s;if(!sym||!sym.endsWith('USDT'))continue;
+    const price=+t.c||0,open=+t.o||0,change=open>0?((price-open)/open)*100:0,qVol=+t.q||0,vol=+t.v||0;
     count++;
     if(!S.symbols[sym])S.symbols[sym]={price,change,vol,quoteVol:qVol,prevVol:0,velocity:0,surge:0,surgePct:0,volChange:0,priceTrend:0,buyScore:0,sellScore:0,signal:'neutral',predictScore:0};
     const s=S.symbols[sym];const pVol=s.vol||0;
@@ -450,52 +405,20 @@ function calcScore(data){
   const c=data[data.length-1].close;
   const m5=calcMA(data,5),m10=calcMA(data,10),m20=calcMA(data,20),rsi=calcRSI(data,14);
   const v5=data.slice(-5).reduce((a,b)=>a+b.volume,0)/5,v10=data.slice(-10,-5).reduce((a,b)=>a+b.volume,0)/5,vr=v10>0?v5/v10:1;
-  let sc=0;let det=[];
-  if(m5!==null&&m10!==null&&m5>m10){sc+=15;det.push('均线多头+15')}
-  if(m10!==null&&m20!==null&&m10>m20){sc+=10;det.push('中线走强+10')}
-  if(m5!==null&&c>m5*1.001){sc+=8;det.push('破MA5+8')}
-  if(m20!==null&&c>m20*1.002){sc+=7;det.push('破MA20+7')}
-  if(vr>1.8){sc+=15;det.push('量比放大+15')}else if(vr>1.3){sc+=10;det.push('量比放大+10')}else if(vr>1.1){sc+=5;det.push('量比微增+5')}
-  if(rsi<30){sc+=20;det.push('RSI超卖+20')}else if(rsi<40){sc+=15;det.push('RSI偏低+15')}else if(rsi<50){sc+=10;det.push('RSI偏弱+10')}else if(rsi<60){sc+=5;det.push('RSI中性+5')}else if(rsi>75){sc-=15;det.push('RSI超买-15')}else if(rsi>70){sc-=8;det.push('RSI偏高-8')}
+  let sc=0;
+  if(m5!==null&&m10!==null&&m5>m10)sc+=15;
+  if(m10!==null&&m20!==null&&m10>m20)sc+=10;
+  if(m5!==null&&c>m5*1.001)sc+=8;
+  if(m20!==null&&c>m20*1.002)sc+=7;
+  if(vr>1.8)sc+=15;else if(vr>1.3)sc+=10;else if(vr>1.1)sc+=5;
+  if(rsi<30)sc+=20;else if(rsi<40)sc+=15;else if(rsi<50)sc+=10;else if(rsi<60)sc+=5;else if(rsi>75)sc-=15;else if(rsi>70)sc-=8;
   const m5m=data.length>=6?(c-data[data.length-6].close)/c*100:0;
-  if(m5m>3){sc+=15;det.push('5m拉升+15')}else if(m5m>1.5){sc+=10;det.push('5m拉升+10')}else if(m5m>0){sc+=5;det.push('5m微涨+5')}else if(m5m<-2){sc-=5;det.push('5m下跌-5')}
-  if(v5>0){const vr2=data[data.length-1].volume/v5;if(vr2>3){sc+=10;det.push('末K放量+10')}else if(vr2>2){sc+=6;det.push('末K放量+6')}else if(vr2>1.5){sc+=3;det.push('末K放量+3')}}
-  const p10=data.slice(-10);const rh=Math.max(...p10.map(x=>x.high)),rl=Math.min(...p10.map(x=>x.low));
+  if(m5m>3)sc+=15;else if(m5m>1.5)sc+=10;else if(m5m>0)sc+=5;else if(m5m<-2)sc-=5;
+  if(v5>0){const vr2=data[data.length-1].volume/v5;if(vr2>3)sc+=10;else if(vr2>2)sc+=6;else if(vr2>1.5)sc+=3}
+  const p10=data.slice(-10);const rh=Math.max(...p10.map(d=>d.high)),rl=Math.min(...p10.map(d=>d.low));
   const pir=rh-rl>0?(c-rl)/(rh-rl):0.5;
-  if(pir<0.2&&vr>1.5){sc+=10;det.push('低位放量+10')}
-  // Bollinger Bands
-  var bb=calcBB(data);
-  if(bb.l!==null){
-    if(c<bb.l){sc+=20;det.push('布林下轨+20')}else if(c<bb.m-(bb.m-bb.l)*0.5){sc+=8;det.push('布林偏下+8')}
-    if(c>bb.u){sc-=15;det.push('布林上轨-15')}else if(c>bb.m+(bb.u-bb.m)*0.5){sc-=5;det.push('布林偏上-5')}
-    if(bb.b>0.15){sc+=5;det.push('布林扩口+5')}
-  }
-  // MACD
-  var md=calcMACD(data);
-  if(md.m!==null&&md.s!==null){
-    if(md.m>md.s){sc+=10;det.push('MACD金叉+10')}
-    if(md.h>0){sc+=5;det.push('MACD动量+5')}
-    if(md.d>0){sc+=20;det.push('底背离+20')}
-    if(md.d<0){sc-=15;det.push('顶背离-15')}
-  }
-  // ATR
-  var atr=calcATR(data);
-  if(atr.v!==null&&atr.v>0){
-    var last=data[data.length-1],prev=data[data.length-2];
-    var ltr=Math.max(last.high-last.low,Math.abs(last.high-prev.close),Math.abs(last.low-prev.close));
-    if(ltr>atr.v*1.5){sc+=10;det.push('ATR突破+10')}
-    if(atr.r){sc+=5;det.push('波动扩大+5')}
-  }
-  // Consecutive candles
-  var gr=0,re=0;
-  for(var i=data.length-1;i>=0;i--){if(data[i].close>=data[i].open)gr++;else break}
-  for(var i=data.length-1;i>=0;i--){if(data[i].close<data[i].open)re++;else break}
-  if(gr>=3){var add=gr>=5?15:10;sc+=add;det.push('连阳+'+add)}
-  if(re>=3){var sub=re>=5?10:5;sc-=sub;det.push('连阴-'+sub)}
-  // Candlestick patterns
-  var pat=calcPattern(data);
-  if(pat.s!==0){sc+=pat.s;det.push(pat.n+(pat.s>0?'+':'')+pat.s)}
-  return{s:sc,d:det};
+  if(pir<0.2&&vr>1.5)sc+=10;
+  return Math.max(0,Math.min(100,Math.round(sc)));
 }
 
 async function updateKlines(){
@@ -505,10 +428,10 @@ async function updateKlines(){
   await Promise.allSettled(top.map(([sym])=>{
     if(S.klineFetching.has(sym))return;
     S.klineFetching.add(sym);
-    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym]){var cr=calcScore(d);S.symbols[sym].predictScore=cr.s;S.symbols[sym].scoreDetail=cr.d}}}).finally(()=>S.klineFetching.delete(sym));
+    return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym])S.symbols[sym].predictScore=calcScore(d)}}).finally(()=>S.klineFetching.delete(sym));
   }));
   $('klineCount').textContent=Object.keys(S.klines).length;
-  if(Object.keys(S.symbols).length>0)render();
+  render();
 }
 
 function spark(sym){
@@ -547,15 +470,10 @@ function render(){
     const kd=S.klines[sym];
     if(kd&&kd.length>=15){const m5=calcMA(kd,5),m10=calcMA(kd,10),m20=calcMA(kd,20),rsi=calcRSI(kd,14);const f1=m5&&m10?(m5>m10?'🟢':'🔴'):'',f2=m10&&m20?(m10>m20?'🟢':'🔴'):'',f3=rsi<40?'🟢':rsi>70?'🔴':'⚪';tech='<span style="font-size:10px" title="RSI:'+(rsi||'-')+'">'+f1+f2+f3+' '+(rsi?rsi.toFixed(0):'--')+'</span>'}
     const c2=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
-    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div>title="'+(sd?sd.join(' · '):'')+'" style="cursor:help"><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
+    h+='<tr class="'+pc+(iw?' watched':'')+'"><td class="'+rc+'">'+(i+1)+'</td><td><a class="sym-link" data-sym="'+sym+'" style="cursor:pointer">'+b+'</a></td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(sym)+'</td><td>'+fmtP(s.price)+'</td><td>'+tags+'</td><td class="'+(s.change>=0?'text-up':'text-down')+'">'+fmtC(s.change)+'</td><td><div class="pred-bar" style="width:'+bp+'px;background:'+(s.signal==='buy'?'#3fb95055':s.signal==='sell'?'#f8514955':'#58a6ff33')+';vertical-align:middle;display:inline-block;margin-right:2px"></div><span class="'+(s.surge>0?'text-up':'')+'">'+fmtA(s.surgePct/60)+'</span></td><td>'+fmtV(s.quoteVol)+'</td><td>'+tech+'</td><td><div class="pred-bar" style="width:'+(sc*0.35)+'px;background:linear-gradient(90deg,#484f58,'+c2+');margin-right:4px"></div><strong style="color:'+c2+'">'+(sc||0)+'</strong></td></tr>';
   }
   tb.innerHTML=h;
   if(r.length>0){const[sym,s]=r[0];$('topMover').innerHTML='🔮 首: <strong>'+sym.replace('USDT','')+'</strong> 分'+(s.predictScore||0)+' '+fmtC(s.change)}
-  const btc=S.symbols['BTCUSDT'];
-  if(btc){$('btcInfo').innerHTML='BTC <span class="'+(btc.change>=0?'text-up':'text-down')+'">'+fmtP(btc.price)+' '+fmtC(btc.change)+'</span>'}
-  let up=0,dn=0;
-  for(const[s2,o]of Object.entries(S.symbols)){if(o.change>0.1)up++;else if(o.change<-0.1)dn++}
-  $('marketSentiment').innerHTML='涨跌比 <strong class="'+(up>=dn?'text-up':'text-down')+'">'+up+':'+dn+'</strong>';
 }
 
 function updateBadges(){$('buyBadge').textContent=getRanking('buy').length;$('sellBadge').textContent=getRanking('sell').length;$('predBadge').textContent=Object.entries(S.symbols).filter(([sym,s])=>(s.predictScore||0)>=(parseFloat($('minPredScore').value)||0)).length;$('sigCount').textContent=getRanking('buy').length+getRanking('sell').length}
@@ -569,49 +487,12 @@ function renderWatchlist(){
     let pnl=0,pnlPct=0;if(s&&avg>0){pnl=s.price-avg;pnlPct=((s.price-avg)/avg)*100}
     const sc=s?(s.predictScore||0):0,pc=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
     h+='<tr class="'+(sc>=50?'sig-buy':'')+'"><td>'+(i+1)+'</td><td class="text-highlight">'+b+'</td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(w.sym)+'</td><td>'+(s?fmtP(s.price):'--')+'</td><td>'+(s&&s.signal==='buy'?'<span class="tag tag-buy">做多</span>':s&&s.signal==='sell'?'<span class="tag tag-sell">卖出</span>':'<span class="tag tag-neutral">-</span>')+'</td><td class="'+(s&&s.change>=0?'text-up':'text-down')+'">'+(s?fmtC(s.change):'--')+'</td><td>'+fmtP(avg)+'</td><td class="'+(pnlPct>0?'text-up':'text-down')+'">'+(avg>0?fmtC(pnlPct):'--')+'</td><td><strong style="color:'+pc+'">'+sc+'</strong></td><td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\''+w.sym+'\')">✕</button></td></tr>';
-    if(avg>0){var bd2=parseFloat($('tradeBudget')&&$('tradeBudget').value)||100;var sn='观望',sa=0,sc2='text-muted';if(sc>=70){sn='大买';sa=Math.round(bd2);sc2='text-up'}else if(sc>=50){sn='小买';sa=Math.round(bd2*0.6);sc2='text-up'}else if(sc>=30){sn='关注';sa=Math.round(bd2*0.3);sc2='text-highlight'};h+='<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:12px;color:#c9d1d9;padding:2px 8px 4px">建议 <span class="'+sc2+'">'+sn+'</span> '+(sa>0?sa+'U':'—')+' | <span class="text-up" style="font-weight:600">入场 '+fmtP(avg*0.97)+'~'+fmtP(avg*1.03)+' | <span class="text-up" style="font-weight:600">TP1 '+fmtP(avg*1.08)+'</span> | <span class="text-up" style="font-weight:500">TP2 '+fmtP(avg*1.15)+'</span> | <span class="text-up" style="font-weight:400">TP3 '+fmtP(avg*1.25)+'</span> | <span class="text-down" style="font-weight:600">止损 '+fmtP(avg*0.93)+'</span>'+(s?fmtP(s.price):'--')+'</td></tr>'}
+    if(avg>0)h+='<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:10px;color:#484f58;padding:0 8px 4px">止盈 ~'+fmtP(avg*1.03)+' | 止损 ~'+fmtP(avg*0.97)+' | 当前 '+(s?fmtP(s.price):'--')+'</td></tr>';
   }
   bd.innerHTML=h;
 }
 
-
-// ---- Watchlist search ----
-function watchInput(){
-  var inp=document.getElementById("watchSearch");if(!inp)return;
-  var v=inp.value.toUpperCase().trim();
-  var box=document.getElementById("watchSuggestions");if(!box)return;
-  if(!v||!S.connected){box.style.display="none";box.innerHTML="";return}
-  var keys=Object.keys(S.symbols);var h="";
-  for(var i=0;i<keys.length;i++){
-    var s=keys[i];if(!s.includes(v))continue;
-    var dup=false;for(var j=0;j<S.watchlist.length;j++){if(S.watchlist[j].sym===s){dup=true;break}}
-    if(dup)continue;
-    h=h+'<div class="wsi" style="padding:6px 10px;cursor:pointer;color:#c9d1d9;border-bottom:1px solid #21262d">'+s.replace('USDT','')+'</div>';
-    if(i>15)break;
-  }
-  if(!h){box.style.display="none";box.innerHTML="";return}
-  box.innerHTML=h;box.style.display="block";
-  var items=box.children;
-  for(var i=0;i<items.length;i++){
-    items[i].onclick=function(){watchPick(this.textContent)};
-  }
-}
-function watchPick(name){
-  var sym=name.toUpperCase().trim();
-  if(sym.slice(-4)!=="USDT")sym=sym+"USDT";
-  if(!S.symbols[sym])return;
-  for(var i=0;i<S.watchlist.length;i++){if(S.watchlist[i].sym===sym)return}
-  S.watchlist.push({sym:sym,avgPrice:S.symbols[sym].price||0});
-  saveWatch();
-  S.currentTab="watchlist";renderWatchlist();
-  document.getElementById("watchSearch").value="";
-  document.getElementById("watchSuggestions").style.display="none";
-}
-function watchDoAdd(){
-  var inp=document.getElementById("watchSearch");if(!inp)return;
-  var v=inp.value.toUpperCase().trim();if(!v)return;
-  watchPick(v);
-}function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 
 
@@ -717,5 +598,5 @@ $('pauseBtn').addEventListener('click',function(){S.paused=!S.paused;this.textCo
 $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={};$('alertsBody').innerHTML='<div style="color:#484f58;text-align:center;padding:6px">已清除</div>';$('alertCount').textContent='0'});
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
 
-loadWatch();loadBudget();connect();
+loadWatch();connect();
 </script></body></html>
