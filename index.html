@@ -250,10 +250,11 @@ async function tryREST(url){
   }catch(e){return null}
 }
 
+function normREST(arr){return arr.map(function(t){return {s:t.symbol||t.s,c:t.lastPrice||t.c,o:t.openPrice||t.o,q:t.quoteVolume||t.q,v:t.volume||t.v}})}
 function startREST(url){
-  tryREST(url).then(d=>{if(d){processBinance(d);S.connected=true}});
+  tryREST(url).then(d=>{if(d){processBinance(normREST(d));S.connected=true}});
   if(S.restTimer)clearInterval(S.restTimer);
-  S.restTimer=setInterval(()=>{if(!S.paused)tryREST(url).then(d=>{if(d)processBinance(d)})},5000);
+  S.restTimer=setInterval(()=>{if(!S.paused)tryREST(url).then(d=>{if(d)processBinance(normREST(d))})},5000);
   return true;
 }
 
@@ -385,15 +386,22 @@ function calcScores(){
 
 // ---- Kline (uses available API) ----
 async function fetchKlines(sym){
+  // Try Binance first
   for(const base of DOMAINS.rest){
     try{
       const url='https://'+base+'/api/v3/klines?symbol='+sym+'&interval=5m&limit=30';
-      const r=await fetch(url,{signal:(c=>{setTimeout(()=>c.abort(),5000);return c.signal})(new AbortController())});
+      const r=await fetch(url,{signal:(c=>{setTimeout(()=>c.abort(),4000);return c.signal})(new AbortController())});
       if(!r.ok)continue;
       const d=await r.json();
       return d.map(k=>({time:k[0],open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
     }catch(e){continue}
   }
+  // Fallback: try OKX klines
+  try{
+    const url='https://www.okx.com/api/v5/market/candles?instId='+sym.replace('USDT','-USDT')+'&bar=5m&limit=30';
+    const r=await fetch(url,{signal:(c=>{setTimeout(()=>c.abort(),4000);return c.signal})(new AbortController())});
+    if(r.ok){const j=await r.json();if(j.data)return j.data.reverse().map(k=>({time:+k[0],open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}))}
+  }catch(e){}
   return null;
 }
 
@@ -593,7 +601,7 @@ function checkAlerts(){
 function al(l,t,m){const n=Date.now();S.alerts.unshift({type:t,label:l,msg:m,time:n});if(S.alerts.length>100)S.alerts.pop();const bd=$('alertsBody'),ph=bd.querySelector('[style*="text-align:center"]');if(ph)ph.remove();const dv=document.createElement('div');dv.className='alert-line';const ts=new Date(n);dv.innerHTML='<span class="alert-time">'+ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0')+'</span><span class="alert-label '+t+'">'+l+'</span><span>'+m+'</span>';bd.prepend(dv);$('alertCount').textContent=S.alerts.length}
 function toast(t,m){const d=document.createElement('div');d.className='toast '+t;d.textContent=m;$('toastContainer').appendChild(d);setTimeout(()=>d.remove(),5000)}
 
-function startTimers(){stopTimers();S.alertTimer=setInterval(checkAlerts,6000);S.klineTimer=setInterval(updateKlines,35000)}
+function startTimers(){stopTimers();S.alertTimer=setInterval(checkAlerts,6000);S.klineTimer=setInterval(updateKlines,12000)}
 function stopTimers(){if(S.alertTimer){clearInterval(S.alertTimer);S.alertTimer=null}if(S.klineTimer){clearInterval(S.klineTimer);S.klineTimer=null}}
 
 document.querySelectorAll('.tab-btn').forEach(el=>{el.addEventListener('click',function(){const t=this.dataset.tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');if(t==='watchlist'){$('tableWrap').style.display='none';$('watchlistPanel').style.display='';S.currentTab='watchlist';renderWatchlist()}else{$('tableWrap').style.display='';$('watchlistPanel').style.display='none';S.currentTab=t;render()}})});
