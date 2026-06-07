@@ -706,6 +706,6 @@ loadWatch();connect();
 $('wlSearch').addEventListener('input',wlSearchInput);
 $('wlSearch').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();wlAddClick()}});
 $('wlAddBtn').addEventListener('click',wlAddClick);
-$('wlBatchBtn').addEventListener('click',batchAddTop);
+
 document.addEventListener('click',function(e){if(!e.target.closest('#watchlistPanel'))closeWlSuggestions()});
 </script></body></html>
