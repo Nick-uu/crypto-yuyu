@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh-CN"><!-- r --><head>
+<!DOCTYPE html><html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Crypto YUYU鱼鱼</title>
@@ -460,7 +460,12 @@ function render(){
   const t=S.currentTab;
   if(t==='watchlist'){renderWatchlist();updateBadges();return}
   const r=getRanking(t);updateBadges();
-  if(!r.length){$('tableBody').innerHTML='<tr><td colspan="10" style="text-align:center;color:#484f58;padding:30px">等待数据积累...(约30秒)</td></tr>';return}
+  if(!r.length){
+  // Fallback: show all coins sorted by volume when ranking is empty
+  var fallback=Object.entries(S.symbols).sort(function(a,b){return (b[1].quoteVol||0)-(a[1].quoteVol||0)}).slice(0,parseInt($('displayCount').value)||50);
+  if(!fallback.length){$('tableBody').innerHTML='<tr><td colspan="10" style="text-align:center;color:#484f58;padding:30px">等待数据积累...(约30秒)</td></tr>';return}
+  r=fallback;
+}
   const tb=$('tableBody'),ms=r.length>0?Math.max(Math.abs(r[0][1].surge||1),1):1;
   let h='';
   for(let i=0;i<r.length;i++){
