@@ -566,14 +566,16 @@ function renderWatchlist(){
       var distToEntry=s?((s.price-ep)/ep*100).toFixed(1):'--';
       var nearEntry=s&&s.price<=lv.entryHigh&&s.price>=lv.entryLow;
       h+='<tr class="trade-detail-row"><td colspan="2"></td><td colspan="11" class="trade-detail">';
-      h+='<span>📊 TP1 <b class="text-up">+'+tp1Pct+'%</b></span>';
-      h+='<span>TP2 <b class="text-up">+'+tp2Pct+'%</b></span>';
-      h+='<span>TP3 <b class="text-up">+'+tp3Pct+'%</b></span>';
-      h+='<span>🛑 止损 <b class="text-down">-'+slPct+'%</b></span>';
-      h+='<span>📐 盈亏比 <b class="trade-rr">1:'+lv.riskReward+'</b></span>';
+      h+='<span class="entry-block">🎯 入场区 '+fmtP(lv.entryLow)+' ~ '+fmtP(lv.entryHigh)+'</span>';
+      h+='<span class="tp-block tp1-block">🎯 TP1 '+fmtP(lv.tp1)+' <b>+'+tp1Pct+'%</b></span>';
+      h+='<span class="tp-block tp2-block">🎯 TP2 '+fmtP(lv.tp2)+' <b>+'+tp2Pct+'%</b></span>';
+      h+='<span class="tp-block tp3-block">🎯 TP3 '+fmtP(lv.tp3)+' <b>+'+tp3Pct+'%</b></span>';
+      h+='<span class="sl-block">🛑 止损 '+fmtP(lv.stopLoss)+' <b>-'+slPct+'%</b></span>';
+      h+='<span class="rr-block">⚖ 1:'+lv.riskReward+'</span>';
       if(s){
-        h+='<span>📍 距入场 <b class="'+(parseFloat(distToEntry)>=0?'text-up':'text-down')+'">'+distToEntry+'%</b></span>';
-        if(nearEntry)h+='<span class="trade-entry">✅ 在入场区内</span>';
+        var inEntryZone=s.price<=lv.entryHigh&&s.price>=lv.entryLow;
+        if(inEntryZone)h+='<span class="entry-block inzone">✅ 当前在入场区内！</span>';
+        else h+='<span style="font-size:12px;color:#8b949e">📍 距入场区 <b>'+(s.price<lv.entryLow?'↓':'↑')+' '+Math.abs((s.price-lv.entryLow)/lv.entryLow*100).toFixed(1)+'%</b></span>';
       }
       h+='</td></tr>';
     }
