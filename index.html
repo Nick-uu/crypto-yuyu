@@ -113,9 +113,15 @@ footer{padding:8px 20px;font-size:10px;color:#484f58;border-top:1px solid #21262
 <thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>成交量加速</th><th>24h 成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
 <tbody id="tableBody"></tbody></table></div>
 
-<div id="watchlistPanel" style="display:none"><div class="table-wrap" style="padding:0">
-<table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>价格</th><th>方向</th><th>涨跌幅</th><th>买入均价</th><th>浮盈</th><th>预测分</th><th>操作</th></tr></thead>
-<tbody id="watchlistBody"><tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">点击币名加入自选</div></td></tr></tbody></table></div></div>
+<div id="watchlistPanel" style="display:none">
+<div class="wl-toolbar">
+<div class="wl-rel" style="flex:1;min-width:150px"><input class="wl-search" id="wlSearch" type="text" placeholder="搜索币种加入自选 (如 BTC, ETH, SOL)" autocomplete="off"><div class="wl-suggestions" id="wlSuggestions"></div></div>
+<button class="wl-btn wl-btn-add" id="wlAddBtn">+ 添加</button>
+<button class="wl-btn wl-btn-batch" id="wlBatchBtn">📋 一键添加预测TOP</button>
+</div>
+<div class="table-wrap" style="padding:0">
+<table><thead><tr><th>#</th><th>币种</th><th>K线</th><th>现价</th><th>入场均价</th><th>入场区间</th><th>TP1</th><th>TP2</th><th>TP3</th><th>止损</th><th>盈亏比</th><th>预测</th><th>操作</th></tr></thead>
+<tbody id="watchlistBody"><tr><td colspan="13"><div style="color:#484f58;text-align:center;padding:30px">搜索币名添加自选，或点击预测列表中的币名</div></td></tr></tbody></table></div></div>
 
 <div class="alerts-wrap"><div class="alerts-header"><span>🔔 信号</span><span id="alertCount">0</span></div>
 <div class="alerts-body" id="alertsBody"><div style="color:#484f58;text-align:center;padding:6px">等待数据...</div></div></div>
@@ -408,6 +414,35 @@ async function fetchKlines(sym){
 function calcMA(d,p){if(!d||d.length<p)return null;return d.slice(-p).reduce((a,b)=>a+b.close,0)/p}
 function calcRSI(d,p){p=p||14;if(!d||d.length<p+1)return 50;const c=d.map(x=>x.close);let g=0,l=0;for(let i=c.length-p;i<c.length;i++){const d2=c[i]-c[i-1];if(d2>0)g+=d2;else l-=d2}if(l===0)return 100;return 100-100/(1+g/l)}
 
+function calcATR2(data,p){p=p||14;if(!data||data.length<p+1)return null;const trs=[];for(let i=1;i<data.length;i++)trs.push(Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close)));return trs.slice(-p).reduce(function(a,b){return a+b},0)/p}
+function calcTradeLevels(sym,entryPrice){
+  var s=S.symbols[sym];if(!s||!s.price)return null;
+  var kd=S.klines[sym];var price=s.price;var atr=null;
+  if(kd&&kd.length>=15)atr=calcATR2(kd,14);
+  // Entry zone: current price area
+  var zoneLow=price*0.98,zoneHigh=price*1.01;
+  if(atr){zoneLow=price-atr*0.8;zoneHigh=price+atr*0.3}
+  if(kd&&kd.length>=15){var lows=kd.slice(-15).map(function(d){return d.low});zoneLow=Math.max(Math.min.apply(null,lows),price*0.95)}
+  // Use user's entry price if set, otherwise current price
+  var ep=entryPrice||price;
+  var tp1,tp2,tp3,sl;
+  if(atr&&atr>0&&atr/price<0.05){
+    // ATR-based targets
+    tp1=ep+atr*2.5;tp2=ep+atr*4;tp3=ep+atr*7;sl=ep-atr*2;
+  }else{
+    // Percentage-based targets
+    tp1=ep*1.05;tp2=ep*1.10;tp3=ep*1.20;sl=ep*0.95;
+  }
+  // Round decimals
+  var dec=price<0.01?8:price<1?6:price<50?4:2;
+  var rr=((tp1-ep)/(ep-sl)).toFixed(1);
+  return{
+    entryLow:zoneLow,entryHigh:zoneHigh,
+    tp1:tp1,tp2:tp2,tp3:tp3,stopLoss:sl,
+    riskReward:rr,decimals:dec,atr:atr
+  };
+}
+
 function calcScore(data){
   if(!data||data.length<15)return 0;
   const c=data[data.length-1].close;
@@ -492,20 +527,76 @@ function render(){
 function updateBadges(){$('buyBadge').textContent=getRanking('buy').length;$('sellBadge').textContent=getRanking('sell').length;$('predBadge').textContent=Object.entries(S.symbols).filter(([sym,s])=>(s.predictScore||0)>=(parseFloat($('minPredScore').value)||0)).length;$('sigCount').textContent=getRanking('buy').length+getRanking('sell').length}
 
 function renderWatchlist(){
-  const bd=$('watchlistBody');$('watchBadge').textContent=S.watchlist.length;
-  if(!S.watchlist.length){bd.innerHTML='<tr><td colspan="10"><div style="color:#484f58;text-align:center;padding:30px">自选为空</div></td></tr>';return}
-  let h='';
-  for(let i=0;i<S.watchlist.length;i++){
-    const w=S.watchlist[i],s=S.symbols[w.sym],b=w.sym.replace('USDT',''),avg=w.avgPrice||0;
-    let pnl=0,pnlPct=0;if(s&&avg>0){pnl=s.price-avg;pnlPct=((s.price-avg)/avg)*100}
-    const sc=s?(s.predictScore||0):0,pc=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
-    h+='<tr class="'+(sc>=50?'sig-buy':'')+'"><td>'+(i+1)+'</td><td class="text-highlight">'+b+'</td><td style="padding:0 4px;text-align:center;line-height:0">'+spark(w.sym)+'</td><td>'+(s?fmtP(s.price):'--')+'</td><td>'+(s&&s.signal==='buy'?'<span class="tag tag-buy">做多</span>':s&&s.signal==='sell'?'<span class="tag tag-sell">卖出</span>':'<span class="tag tag-neutral">-</span>')+'</td><td class="'+(s&&s.change>=0?'text-up':'text-down')+'">'+(s?fmtC(s.change):'--')+'</td><td>'+fmtP(avg)+'</td><td class="'+(pnlPct>0?'text-up':'text-down')+'">'+(avg>0?fmtC(pnlPct):'--')+'</td><td><strong style="color:'+pc+'">'+sc+'</strong></td><td><button class="gray" style="font-size:10px;padding:1px 6px" onclick="removeWatch(\''+w.sym+'\')">✕</button></td></tr>';
-    if(avg>0)h+='<tr style="border-top:none"><td colspan="2"></td><td colspan="8" style="font-size:10px;color:#484f58;padding:0 8px 4px">止盈 ~'+fmtP(avg*1.03)+' | 止损 ~'+fmtP(avg*0.97)+' | 当前 '+(s?fmtP(s.price):'--')+'</td></tr>';
+  var bd=$('watchlistBody');$('watchBadge').textContent=S.watchlist.length;
+  if(!S.watchlist.length){bd.innerHTML='<tr><td colspan="13"><div style="color:#484f58;text-align:center;padding:30px">搜索币名添加自选，或点击预测列表中的币名</div></td></tr>';return}
+  var h='';
+  for(var i=0;i<S.watchlist.length;i++){
+    var w=S.watchlist[i],s=S.symbols[w.sym],b=w.sym.replace('USDT',''),avg=w.avgPrice||0;
+    var pnl=0,pnlPct=0;if(s&&avg>0){pnl=s.price-avg;pnlPct=((s.price-avg)/avg)*100}
+    var sc=s?(s.predictScore||0):0,pc=sc>=70?'#d2a8ff':sc>=50?'#58a6ff':sc>=30?'#d29922':'#484f58';
+    var lv=calcTradeLevels(w.sym,avg);
+    var dec=lv?lv.decimals:4;
+    // Main row
+    h+='<tr class="'+(sc>=50?'sig-buy':'')+'" id="wl-row-'+i+'">';
+    h+='<td>'+(i+1)+'</td>';
+    h+='<td class="text-highlight">'+b+'</td>';
+    h+='<td style="padding:0 4px;text-align:center;line-height:0">'+spark(w.sym)+'</td>';
+    h+='<td>'+(s?fmtP(s.price):'--')+'</td>';
+    h+='<td style="cursor:pointer" onclick="setEntryPrice(\''+w.sym+'\')" title="点击修改入场价">'+fmtP(avg)+'</td>';
+    if(lv){
+      h+='<td class="trade-entry">'+fmtP(lv.entryLow)+'~'+fmtP(lv.entryHigh)+'</td>';
+      h+='<td class="trade-tp">'+fmtP(lv.tp1)+'</td>';
+      h+='<td class="trade-tp">'+fmtP(lv.tp2)+'</td>';
+      h+='<td class="trade-tp">'+fmtP(lv.tp3)+'</td>';
+      h+='<td class="trade-sl">'+fmtP(lv.stopLoss)+'</td>';
+      h+='<td class="trade-rr">1:'+lv.riskReward+'</td>';
+    }else{
+      h+='<td colspan="6" class="text-muted" style="font-size:10px">等待K线数据...</td>';
+    }
+    h+='<td><strong style="color:'+pc+'">'+sc+'</strong></td>';
+    h+='<td><button class="gray" style="font-size:10px;padding:1px 5px" onclick="removeWatch(\''+w.sym+'\')">✕</button></td>';
+    h+='</tr>';
+    // Detail row: entry plan + action
+    if(lv&&avg>0){
+      var ep=avg;
+      var tp1Pct=((lv.tp1-ep)/ep*100).toFixed(1);
+      var tp2Pct=((lv.tp2-ep)/ep*100).toFixed(1);
+      var tp3Pct=((lv.tp3-ep)/ep*100).toFixed(1);
+      var slPct=((ep-lv.stopLoss)/ep*100).toFixed(1);
+      var distToEntry=s?((s.price-ep)/ep*100).toFixed(1):'--';
+      var nearEntry=s&&s.price<=lv.entryHigh&&s.price>=lv.entryLow;
+      h+='<tr class="trade-detail-row"><td colspan="2"></td><td colspan="11" class="trade-detail">';
+      h+='<span>📊 TP1 <b class="text-up">+'+tp1Pct+'%</b></span>';
+      h+='<span>TP2 <b class="text-up">+'+tp2Pct+'%</b></span>';
+      h+='<span>TP3 <b class="text-up">+'+tp3Pct+'%</b></span>';
+      h+='<span>🛑 止损 <b class="text-down">-'+slPct+'%</b></span>';
+      h+='<span>📐 盈亏比 <b class="trade-rr">1:'+lv.riskReward+'</b></span>';
+      if(s){
+        h+='<span>📍 距入场 <b class="'+(parseFloat(distToEntry)>=0?'text-up':'text-down')+'">'+distToEntry+'%</b></span>';
+        if(nearEntry)h+='<span class="trade-entry">✅ 在入场区内</span>';
+      }
+      h+='</td></tr>';
+    }
   }
   bd.innerHTML=h;
 }
 
-function addWatch(sym){if(S.watchlist.some(w=>w.sym===sym))return;const s=S.symbols[sym];S.watchlist.push({sym,avgPrice:s?s.price:0});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
+function setEntryPrice(sym){
+  var s=S.symbols[sym];if(!s)return;
+  var p=prompt('设置 '+sym.replace('USDT','')+' 入场均价
+当前价: '+fmtP(s.price)+'
+输入0则用当前价',S.watchlist.find(function(w){return w.sym===sym}).avgPrice||s.price);
+  if(p===null)return;
+  var v=parseFloat(p)||s.price;
+  for(var i=0;i<S.watchlist.length;i++){if(S.watchlist[i].sym===sym){S.watchlist[i].avgPrice=v;break}}
+  saveWatch();renderWatchlist();
+}
+
+function addWatch(sym,price){if(S.watchlist.some(function(w){return w.sym===sym}))return;var s=S.symbols[sym];S.watchlist.push({sym:sym,avgPrice:price||(s?s.price:0)});saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render();closeWlSuggestions()}
+function batchAddTop(){var top=getRanking('predict').slice(0,5);var added=0;for(var i=0;i<top.length;i++){var sym=top[i][0];if(!S.watchlist.some(function(w){return w.sym===sym})){S.watchlist.push({sym:sym,avgPrice:S.symbols[sym]?S.symbols[sym].price:0});added++}}saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render();if(added>0)toast('pred','📋 已添加 '+added+' 个预测TOP币')}
+function wlSearchInput(){var inp=$('wlSearch');if(!inp)return;var v=(inp.value||'').trim().toUpperCase();var box=$('wlSuggestions');if(!box)return;if(!v||!S.connected){box.style.display='none';return}var keys=Object.keys(S.symbols);var matches=[];for(var i=0;i<keys.length;i++){if(keys[i].indexOf(v)>=0&&!S.watchlist.some(function(w){return w.sym===keys[i]}))matches.push(keys[i])}if(!matches.length){box.style.display='none';return}matches=matches.slice(0,12);var h='';for(var i=0;i<matches.length;i++){var sym=matches[i],s=S.symbols[sym];h+='<div class="wl-si" data-sym="'+sym+'" onclick="addWatch(\''+sym+'\',null)"><span>'+sym.replace('USDT','')+'</span><span class="text-muted">'+(s?fmtP(s.price):'')+' '+(s&&s.change>0?'↑':'↓')+'</span></div>'}box.innerHTML=h;box.style.display='block'}
+function closeWlSuggestions(){var box=$('wlSuggestions');if(box)box.style.display='none'}
+function wlAddClick(){var inp=$('wlSearch');if(!inp)return;var v=(inp.value||'').trim().toUpperCase();if(!v)return;v=v.indexOf('USDT')<0?v+'USDT':v;if(S.symbols[v]){addWatch(v);inp.value=''}else{toast('sell','未找到: '+v.replace('USDT',''))}}
 function removeWatch(sym){S.watchlist=S.watchlist.filter(w=>w.sym!==sym);saveWatch();if(S.currentTab==='watchlist')renderWatchlist();render()}
 
 
@@ -612,4 +703,9 @@ $('clearBtn').addEventListener('click',function(){S.alerts=[];S.lastAlertKeys={}
 ['minVolFilter','priceCap','minPredScore','displayCount'].forEach(id=>{$(id).addEventListener('change',function(){if(S.connected)render()})});
 
 loadWatch();connect();
+$('wlSearch').addEventListener('input',wlSearchInput);
+$('wlSearch').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();wlAddClick()}});
+$('wlAddBtn').addEventListener('click',wlAddClick);
+$('wlBatchBtn').addEventListener('click',batchAddTop);
+document.addEventListener('click',function(e){if(!e.target.closest('#watchlistPanel'))closeWlSuggestions()});
 </script></body></html>
