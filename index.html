@@ -585,9 +585,7 @@ function renderWatchlist(){
 
 function setEntryPrice(sym){
   var s=S.symbols[sym];if(!s)return;
-  var p=prompt('设置 '+sym.replace('USDT','')+' 入场均价
-当前价: '+fmtP(s.price)+'
-输入0则用当前价',S.watchlist.find(function(w){return w.sym===sym}).avgPrice||s.price);
+  var p=prompt('设置 '+sym.replace('USDT','')+' 入场均价\n当前价: '+fmtP(s.price)+'\n输入0则用当前价',S.watchlist.find(function(w){return w.sym===sym}).avgPrice||s.price);
   if(p===null)return;
   var v=parseFloat(p)||s.price;
   for(var i=0;i<S.watchlist.length;i++){if(S.watchlist[i].sym===sym){S.watchlist[i].avgPrice=v;break}}
