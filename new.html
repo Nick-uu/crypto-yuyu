@@ -15,7 +15,7 @@ header h1 span{color:#d2a8ff}
 .controls select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:4px 8px;font-size:12px;outline:none}
 .controls button{background:#238636;border:none;border-radius:6px;color:#fff;padding:4px 12px;font-size:12px;cursor:pointer}
 table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
-th{padding:6px 8px;text-align:right;font-weight:600;color:#8b949e;border-bottom:1px solid #30363d;position:sticky;top:0;background:#0d1117}
+th{padding:6px 8px;text-align:right;font-weight:600;color:#8b949e;border-bottom:1px solid #30363d}
 th:first-child{text-align:center;width:30px}
 td{padding:4px 8px;text-align:right;border-bottom:1px solid #1c2128}
 td:nth-child(2){text-align:left;font-weight:600}
@@ -24,10 +24,8 @@ td:nth-child(2){text-align:left;font-weight:600}
 </style>
 </head>
 <body>
-
 <header><h1>Crypto <span>鱼鱼</span></h1></header>
 <div id="status">正在连接数据源...</div>
-
 <div class="controls">
 <select id="sort">
 <option value="volume_desc">成交额 ↓</option>
@@ -42,14 +40,12 @@ td:nth-child(2){text-align:left;font-weight:600}
 </select>
 <button id="refresh">刷新</button>
 </div>
-
 <table>
 <thead><tr><th>#</th><th>币种</th><th>价格</th><th>24h涨跌</th><th>24h成交额</th><th>市值排名</th></tr></thead>
 <tbody id="tbody">
 <tr><td class="loading" colspan="6">正在获取数据...</td></tr>
 </tbody>
 </table>
-
 <script>
 var $=function(id){return document.getElementById(id)};
 
@@ -62,7 +58,7 @@ function loadData(){
   tb.innerHTML='<tr><td class="loading" colspan="6">正在获取数据...</td></tr>';
   $('status').textContent='正在请求 CoinGecko API...';
   
-  fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=100&page=1&sparkline=false',{signal:(function(){var c=new AbortController();setTimeout(function(){c.abort()},15000);return c.signal})()})
+  fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=100&page=1&sparkline=false',{signal:(function(){var c=new AbortController();setTimeout(function(){c.abort()},10000);return c.signal})()})
     .then(function(r){return r.json()})
     .then(function(d){
       if(!Array.isArray(d))throw new Error('数据格式错误');
