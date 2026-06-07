@@ -388,8 +388,8 @@ function processOKX(data){
 function processBinance(arr){
   const now=Date.now();let count=0;
   for(const t of arr){
-    const sym=t.s;if(!sym||!sym.endsWith('USDT'))continue;
-    const price=+t.c||0,open=+t.o||0,change=open>0?((price-open)/open)*100:0,qVol=+t.q||0,vol=+t.v||0;
+    const sym=t.s||t.symbol;if(!sym||!sym.endsWith('USDT'))continue;
+    const price=+(t.c||t.lastPrice||0),open=+(t.o||t.openPrice||0),change=open>0?((price-open)/open)*100:0,qVol=+(t.q||t.quoteVolume||0),vol=+(t.v||t.volume||0);
     count++;
     if(!S.symbols[sym])S.symbols[sym]={price,change,vol,quoteVol:qVol,prevVol:0,velocity:0,surge:0,surgePct:0,volChange:0,priceTrend:0,buyScore:0,sellScore:0,signal:'neutral',predictScore:0};
     const s=S.symbols[sym];const pVol=s.vol||0;
