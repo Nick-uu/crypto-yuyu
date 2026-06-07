@@ -7,241 +7,93 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0d1117;color:#c9d1d9}
-header{background:#161b22;border-bottom:1px solid #30363d;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+header{background:#161b22;border-bottom:1px solid #30363d;padding:12px 16px}
 header h1{font-size:16px;font-weight:600}
 header h1 span{color:#d2a8ff}
-.status{font-size:11px;color:#8b949e}
-.dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
-.dot.on{background:#3fb950}.dot.off{background:#f85149}.dot.busy{background:#d29922}
-.controls{display:flex;gap:6px;padding:6px 12px;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap;align-items:center}
-.controls label{font-size:11px;color:#8b949e}
-.controls select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:3px 6px;font-size:11px;outline:none}
-.controls button{background:#238636;border:none;border-radius:6px;color:#fff;padding:3px 10px;font-size:11px;cursor:pointer}
-.controls button.gray{background:#21262d;color:#c9d1d9}
-.tab-bar{display:flex;background:#161b22;border-bottom:1px solid #30363d;overflow-x:auto}
-.tab-btn{padding:8px 12px;font-size:12px;cursor:pointer;color:#8b949e;border-bottom:2px solid transparent;user-select:none;white-space:nowrap}
-.tab-btn:hover{color:#f0f6fc}
-.tab-btn.active{color:#f0f6fc;border-bottom-color:#d2a8ff}
-.tab-btn .badge{display:inline-block;background:#21262d;padding:0 6px;border-radius:8px;font-size:10px;margin-left:3px}
-.table-wrap{padding:4px 12px;overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:11px}
-th{padding:5px 6px;text-align:right;font-weight:600;color:#8b949e;border-bottom:1px solid #30363d;white-space:nowrap}
-th:first-child{text-align:center;width:24px}
-td{padding:3px 6px;text-align:right;border-bottom:1px solid #1c2128;white-space:nowrap}
-td:first-child{text-align:center}
+#status{font-size:12px;color:#8b949e;padding:8px 16px}
+.controls{display:flex;gap:8px;padding:8px 16px;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.controls select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:4px 8px;font-size:12px;outline:none}
+.controls button{background:#238636;border:none;border-radius:6px;color:#fff;padding:4px 12px;font-size:12px;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+th{padding:6px 8px;text-align:right;font-weight:600;color:#8b949e;border-bottom:1px solid #30363d;position:sticky;top:0;background:#0d1117}
+th:first-child{text-align:center;width:30px}
+td{padding:4px 8px;text-align:right;border-bottom:1px solid #1c2128}
 td:nth-child(2){text-align:left;font-weight:600}
-tr:hover td{background:rgba(255,255,255,0.015)}
-.rank-top3{color:#d2a8ff}.rank-top10{color:#3fb950}
-.text-up{color:#3fb950}.text-down{color:#f85149}.text-muted{color:#8b949e}.text-highlight{color:#d2a8ff}
-.tag{display:inline-block;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:600}
-.tag-buy{background:rgba(63,185,80,0.15);color:#3fb950}
-.tag-sell{background:rgba(248,81,73,0.15);color:#f85149}
-.tag-neutral{background:#21262d;color:#8b949e}
-.tag-predict{background:rgba(210,168,255,0.15);color:#d2a8ff;font-weight:700}
-.loading{text-align:center;color:#484f58;padding:30px;font-size:13px}
-.watch-add{display:flex;gap:4px;padding:6px 12px;background:#0d1117;border-bottom:1px solid #21262d}
-.watch-add input{flex:1;min-width:80px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:5px 8px;font-size:11px;outline:none}
-.watch-add button{background:#238636;border:none;border-radius:6px;color:#fff;padding:4px 10px;font-size:11px;cursor:pointer}
-.news-item{padding:6px 4px;border-bottom:1px solid #1c2128;font-size:11px}
-.news-item:hover{background:rgba(255,255,255,0.015)}
-.news-time{color:#484f58;font-size:10px;min-width:40px;display:inline-block}
-.news-title{color:#c9d1d9;text-decoration:none;display:block;line-height:1.4}
-.news-title:hover{color:#58a6ff}
+.text-up{color:#3fb950}.text-down{color:#f85149}
+.loading{text-align:center;color:#484f58;padding:40px;font-size:14px}
 </style>
 </head>
 <body>
-<header><h1>Crypto <span><!-- fish -->鱼鱼</span></h1>
-<div class="status"><span class="dot off" id="sDot"></span><span id="sTxt">初始化中...</span></div></header>
+
+<header><h1>Crypto <span>鱼鱼</span></h1></header>
+<div id="status">正在连接数据源...</div>
 
 <div class="controls">
-<label>排序</label>
-<select id="sortSel"><option value="score">预测分</option><option value="volume">成交额</option><option value="gainers">涨幅</option><option value="losers">跌幅</option></select>
-<label>显示</label>
-<select id="countSel"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
-<label>每笔</label>
-<input id="budget" type="number" value="100" style="width:50px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:2px 4px;font-size:11px;outline:none">
-<button id="refreshBtn" class="gray">刷新</button>
+<select id="sort">
+<option value="volume_desc">成交额 ↓</option>
+<option value="volume_asc">成交额 ↑</option>
+<option value="gainers">涨幅榜</option>
+<option value="losers">跌幅榜</option>
+</select>
+<select id="count">
+<option value="20">20</option>
+<option value="50" selected>50</option>
+<option value="100">100</option>
+</select>
+<button id="refresh">刷新</button>
 </div>
 
-<div class="tab-bar">
-<div class="tab-btn active" data-tab="all">-- 币种</div>
-<div class="tab-btn" data-tab="buy">++ 买入 <span class="badge" id="buyBadge">0</span></div>
-<div class="tab-btn" data-tab="trending">** 热搜</div>
-<div class="tab-btn" data-tab="watchlist">** 自选 <span class="badge" id="wlBadge">0</span></div>
-<div class="tab-btn" data-tab="news">** 快讯</div>
-</div>
-
-<div class="table-wrap" id="tableWrap">
-<table id="mainTable"><thead><tr><th>#</th><th>币种</th><th>价格</th><th>方向</th><th>24h涨跌</th><th>成交量加速</th><th>24h成交额</th><th>技术信号</th><th>预测分</th></tr></thead>
-<tbody id="tableBody"><tr><td class="loading" colspan="9">加载中...</td></tr></tbody></table></div>
-
-<div id="watchlistPanel" style="display:none">
-<div class="watch-add">
-<input id="wlSearch" type="text" placeholder="输入币名搜索添加">
-<button id="wlAddBtn">+ 添加</button></div>
-<div class="table-wrap" style="padding:0">
-<table><thead><tr><th>#</th><th>币种</th><th>价格</th><th>方向</th><th>入场</th><th>TP1</th><th>TP2</th><th>TP3</th><th>止损</th><th>操作</th></tr></thead>
-<tbody id="wlBody"><tr><td class="loading" colspan="10">搜索或点击币名添加</td></tr></tbody></table></div></div>
+<table>
+<thead><tr><th>#</th><th>币种</th><th>价格</th><th>24h涨跌</th><th>24h成交额</th><th>市值排名</th></tr></thead>
+<tbody id="tbody">
+<tr><td class="loading" colspan="6">正在获取数据...</td></tr>
+</tbody>
+</table>
 
 <script>
-var S={coins:[],wl:[],tab:'all',connected:false};
-function getId(id){return document.getElementById(id)}
-function fmtP(v){if(v==null)return'--';var n=+v;if(n<0.00001)return'$'+n.toFixed(8);if(n<0.001)return'$'+n.toFixed(6);if(n<1)return'$'+n.toFixed(4);if(n<50)return'$'+n.toFixed(2);return'$'+n.toLocaleString(undefined,{maxFractionDigits:2})}
-function fmtC(v){return(v>=0?'+':'')+v.toFixed(2)+'%'}
-function fmtV(v){if(!v)return'$0';var n=+v;if(n>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+(n/1e3).toFixed(0)+'K'}
-function st(d,t){getId('sDot').className='dot '+d;getId('sTxt').textContent=t}
+var $=function(id){return document.getElementById(id)};
 
-// Watchlist
-function loadWL(){try{var d=JSON.parse(localStorage.getItem('fw'));if(Array.isArray(d))S.wl=d}catch(e){}}
-function saveWL(){localStorage.setItem('fw',JSON.stringify(S.wl))}
-loadWL();
-try{var b=localStorage.getItem('fb');if(b)getId('budget').value=b}catch(e){}
+function fmtP(v){if(v==null)return'--';var n=+v;if(n<0.00001)return'$'+n.toFixed(8);if(n<0.001)return'$'+n.toFixed(6);if(n<1)return'$'+n.toFixed(4);if(n<50)return'$'+n.toFixed(2);return'$'+n.toLocaleString(undefined,{maxFractionDigits:2})};
+function fmtC(v){return(v>=0?'+':'')+v.toFixed(2)+'%'};
+function fmtV(v){if(!v)return'$0';var n=+v;if(n>=1e9)return'$'+(n/1e9).toFixed(1)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';return'$'+(n/1e3).toFixed(0)+'K'};
 
 function loadData(){
-  st('busy','请求数据...');
-  getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">加载中...</td></tr>';
+  var tb=$('tbody');
+  tb.innerHTML='<tr><td class="loading" colspan="6">正在获取数据...</td></tr>';
+  $('status').textContent='正在请求 CoinGecko API...';
+  
   fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=100&page=1&sparkline=false',{signal:(function(){var c=new AbortController();setTimeout(function(){c.abort()},15000);return c.signal})()})
-    .then(function(r){return r.json()}).then(function(d){
-      if(!Array.isArray(d))throw new Error('数据错误');
-      S.coins=[];S.connected=true;
-      st('on','CoinGecko 已连接');
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(!Array.isArray(d))throw new Error('数据格式错误');
+      var sort=$('sort').value;
+      $('status').textContent='已连接 CoinGecko · '+d.length+' 个币种';
+      
+      if(sort==='volume_desc')d.sort(function(a,b){return(b.total_volume||0)-(a.total_volume||0)});
+      else if(sort==='volume_asc')d.sort(function(a,b){return(a.total_volume||0)-(b.total_volume||0)});
+      else if(sort==='gainers')d.sort(function(a,b){return(b.price_change_percentage_24h||0)-(a.price_change_percentage_24h||0)});
+      else if(sort==='losers')d.sort(function(a,b){return(a.price_change_percentage_24h||0)-(b.price_change_percentage_24h||0)});
+      
+      var limit=parseInt($('count').value)||50;
+      d=d.slice(0,limit);
+      
+      var h='';
       for(var i=0;i<d.length;i++){
-        var c=d[i];var sym=(c.symbol||'').toUpperCase();
-        var ch=c.price_change_percentage_24h||0;var qv=c.total_volume||0;
-        var sc=0;
-        if(ch>5)sc+=30;else if(ch>2)sc+=15;else if(ch>0)sc+=5;
-        if(qv>1e8)sc+=15;else if(qv>5e7)sc+=10;else if(qv>1e7)sc+=5;
-        if(c.market_cap_rank&&c.market_cap_rank<100)sc+=10;
-        var sig='neutral';
-        if(ch>3&&qv>5e7){sig='buy';sc+=10}
-        else if(ch<-3&&qv>5e7){sig='sell';sc+=5}
-        S.coins.push({sym:sym,price:c.current_price||0,change:ch,vol:qv,signal:sig,score:Math.min(100,Math.round(sc)),wl:false});
+        var c=d[i];
+        var ch=c.price_change_percentage_24h||0;
+        h+='<tr><td>'+(i+1)+'</td><td>'+c.symbol.toUpperCase()+'</td><td>'+fmtP(c.current_price)+'</td><td class="'+(ch>=0?'text-up':'text-down')+'">'+fmtC(ch)+'</td><td>'+fmtV(c.total_volume)+'</td><td>#'+(c.market_cap_rank||'-')+'</td></tr>';
       }
-      for(var i=0;i<S.wl.length;i++){for(var j=0;j<S.coins.length;j++){if(S.coins[j].sym===S.wl[i].sym){S.coins[j].wl=true;break}}}
-      renderAll();
-    }).catch(function(e){
-      getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">失败:'+e.message+'<br><button onclick="loadData()" style="margin-top:6px;background:#238636;border:none;border-radius:6px;color:#fff;padding:3px 10px;cursor:pointer">重试</button></td></tr>';
-      st('off','失败');
+      tb.innerHTML=h;
+    })
+    .catch(function(e){
+      tb.innerHTML='<tr><td class="loading" colspan="6">获取失败: '+e.message+'<br><button onclick="loadData()" style="margin-top:8px;background:#238636;border:none;border-radius:6px;color:#fff;padding:4px 12px;cursor:pointer">重试</button></td></tr>';
+      $('status').textContent='连接失败';
     });
 }
 
-function loadTrending(){
-  getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">加载热搜...</td></tr>';
-  fetch('https://api.coingecko.com/api/v3/search/trending',{signal:(function(){var c=new AbortController();setTimeout(function(){c.abort()},10000);return c.signal})()})
-    .then(function(r){return r.json()}).then(function(d){
-      if(!d.coins||!d.coins.length)throw new Error('无数据');
-      var items=[];var tb2=getId('tableBody');
-      for(var i=0;i<Math.min(d.coins.length,20);i++){
-        var c=d.coins[i].item;var sym=c.symbol.toUpperCase();
-        var local=null;
-        for(var j=0;j<S.coins.length;j++){if(S.coins[j].sym===sym||S.coins[j].sym===sym+'USDT'){local=S.coins[j];break}}
-        items.push({r:i+1,n:c.name,sym:sym,pr:local?local.price:0,ch:local?local.change:0,vl:local?local.vol:0,sc:d.coins.length-i});
-      }
-      var h='';
-      for(var i=0;i<items.length;i++){
-        var c=items[i];var ht=c.sc>=15?'***':c.sc>=8?'**':'*';
-        h+='<tr class="'+(c.r<=3?'rank-top3':c.r<=10?'rank-top10':'')+'"><td>'+(i+1)+'</td><td>'+c.n+'</td><td>'+(c.pr?fmtP(c.pr):'--')+'</td><td>--</td><td class="'+(c.ch>=0?'text-up':'text-down')+'">'+(c.ch?fmtC(c.ch):'--')+'</td><td>--</td><td>'+(c.vl?fmtV(c.vl):'--')+'</td><td>--</td><td style="font-size:13px">'+ht+'</td></tr>';
-      }
-      tb2.innerHTML=h;
-    }).catch(function(e){
-      getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">失败:'+e.message+'<br><button onclick="loadTrending()" style="margin-top:6px;background:#238636;border:none;border-radius:6px;color:#fff;padding:3px 10px;cursor:pointer">重试</button></td></tr>';
-    });
-}
-
-function loadNews(){
-  getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">加载新闻...</td></tr>';
-  fetch('https://api.rss2json.com/v1/api.json?rss_url=https://cointelegraph.com/rss',{signal:(function(){var c=new AbortController();setTimeout(function(){c.abort()},10000);return c.signal})()})
-    .then(function(r){return r.json()}).then(function(d){
-      if(!d.items||!d.items.length)throw new Error('无新闻');
-      var h='';
-      for(var i=0;i<Math.min(d.items.length,30);i++){
-        var item=d.items[i];var ts=new Date(item.pubDate);
-        var time=ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0');
-        h+='<div class="news-item"><span class="news-time">'+time+'</span><a class="news-title" href="'+item.link+'" target="_blank">'+item.title+'</a></div>';
-      }
-      getId('tableBody').innerHTML='<tr><td colspan="9"><div style="max-height:450px;overflow-y:auto">'+h+'</div></td></tr>';
-    }).catch(function(e){
-      getId('tableBody').innerHTML='<tr><td class="loading" colspan="9">失败:'+e.message+'<br><button onclick="loadNews()" style="margin-top:6px;background:#238636;border:none;border-radius:6px;color:#fff;padding:3px 10px;cursor:pointer">重试</button></td></tr>';
-    });
-}
-
-function renderAll(){
-  var sort=getId('sortSel').value,cnt=parseInt(getId('countSel').value)||50;
-  var list=[];for(var i=0;i<S.coins.length;i++)list.push(S.coins[i]);
-  if(sort==='score')list.sort(function(a,b){return(b.score||0)-(a.score||0)});
-  else if(sort==='volume')list.sort(function(a,b){return(b.vol||0)-(a.vol||0)});
-  else if(sort==='gainers')list.sort(function(a,b){return(b.change||0)-(a.change||0)});
-  else if(sort==='losers')list.sort(function(a,b){return(a.change||0)-(b.change||0)});
-  list=list.slice(0,cnt);
-  var bc=0;for(var i=0;i<S.coins.length;i++){if(S.coins[i].signal==='buy')bc++}
-  getId('buyBadge').textContent=bc;
-  getId('wlBadge').textContent=S.wl.length;
-  var h='';
-  for(var i=0;i<list.length;i++){
-    var c=list[i];var rc=i<3?'rank-top3':i<10?'rank-top10':'';
-    var tags='<span class="tag tag-neutral">-</span>';
-    if(c.score>=60)tags='<span class="tag tag-predict">看涨</span>';
-    else if(c.signal==='buy')tags='<span class="tag tag-buy">做多</span>';
-    else if(c.signal==='sell')tags='<span class="tag tag-sell">卖出</span>';
-    var tp='<a onclick="addWL(\''+c.sym+'\')" style="cursor:pointer;color:#58a6ff;text-decoration:none;font-size:10px">'+(c.wl?'*':'+')+'</a>';
-    h+='<tr><td class="'+rc+'">'+(i+1)+'</td><td>'+c.sym+'</td><td>'+fmtP(c.price)+'</td><td>'+tags+'</td><td class="'+(c.change>=0?'text-up':'text-down')+'">'+fmtC(c.change)+'</td><td>--</td><td>'+fmtV(c.vol)+'</td><td><span class="'+(c.score>=50?'text-up':c.score>=30?'text-highlight':'text-muted')+'" style="font-size:10px">'+(c.score||0)+'</span></td><td>'+tp+'</td></tr>';
-  }
-  getId('tableBody').innerHTML=h;
-}
-
-function renderWL(){
-  var tb=getId('wlBody');
-  if(!S.wl.length){tb.innerHTML='<tr><td class="loading" colspan="10">自选为空</td></tr>';return}
-  var bud=parseFloat(getId('budget').value)||100;
-  var h='';
-  for(var i=0;i<S.wl.length;i++){
-    var w=S.wl[i];var coin=null;
-    for(var j=0;j<S.coins.length;j++){if(S.coins[j].sym===w.sym){coin=S.coins[j];break}}
-    var pr=coin?coin.price:0;var sig=coin?coin.signal:'neutral';
-    var eL=pr*0.97,eH=pr*1.03,t1=pr*1.08,t2=pr*1.15,t3=pr*1.25,sl=pr*0.93;
-    h+='<tr><td>'+(i+1)+'</td><td class="text-highlight">'+w.sym+'</td><td>'+(pr?fmtP(pr):'--')+'</td><td>'+(sig==='buy'?'<span class="tag tag-buy">做多</span>':sig==='sell'?'<span class="tag tag-sell">卖出</span>':'<span class="tag tag-neutral">-</span>')+'</td><td style="font-size:10px;color:#58a6ff">'+fmtP(eL)+'~'+fmtP(eH)+'</td><td style="font-size:10px;color:#3fb950;font-weight:600">'+fmtP(t1)+'</td><td style="font-size:10px;color:#3fb950">'+fmtP(t2)+'</td><td style="font-size:10px;color:#3fb950">'+fmtP(t3)+'</td><td style="font-size:10px;color:#f85149;font-weight:600">'+fmtP(sl)+'</td><td><button onclick=\'rmWL("'+w.sym+'")\' style="background:none;border:1px solid #30363d;border-radius:4px;color:#8b949e;font-size:10px;padding:1px 6px;cursor:pointer">X</button></td></tr>';
-  }
-  tb.innerHTML=h;
-}
-
-function addWL(sym){
-  for(var i=0;i<S.wl.length;i++){if(S.wl[i].sym===sym)return}
-  S.wl.push({sym:sym});saveWL();renderWL();
-  for(var j=0;j<S.coins.length;j++){if(S.coins[j].sym===sym){S.coins[j].wl=true;break}}
-  renderAll();
-}
-function rmWL(sym){
-  var nw=[];for(var i=0;i<S.wl.length;i++){if(S.wl[i].sym!==sym)nw.push(S.wl[i])}
-  S.wl=nw;saveWL();renderWL();
-  for(var j=0;j<S.coins.length;j++){if(S.coins[j].sym===sym){S.coins[j].wl=false;break}}
-  renderAll();
-}
-function searchWL(){
-  var v=(getId('wlSearch').value||'').toUpperCase().trim();if(!v)return;
-  for(var i=0;i<S.coins.length;i++){
-    if(S.coins[i].sym===v||S.coins[i].sym===v+'USDT'){addWL(S.coins[i].sym);getId('wlSearch').value='';return}
-  }
-  for(var i=0;i<S.coins.length;i++){
-    if(S.coins[i].sym.includes(v)){addWL(S.coins[i].sym);getId('wlSearch').value='';return}
-  }
-}
-
-document.querySelectorAll('.tab-btn').forEach(function(el){
-  el.addEventListener('click',function(){
-    var t=this.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
-    this.classList.add('active');
-    if(t==='watchlist'){getId('tableWrap').style.display='none';getId('watchlistPanel').style.display='';renderWL()}
-    else{getId('tableWrap').style.display='';getId('watchlistPanel').style.display='none';if(t==='trending')loadTrending();else if(t==='news')loadNews();else renderAll()}
-  });
-});
-
-getId('sortSel').addEventListener('change',renderAll);
-getId('countSel').addEventListener('change',renderAll);
-getId('refreshBtn').addEventListener('click',loadData);
-getId('wlSearch').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();searchWL()}});
-getId('wlAddBtn').addEventListener('click',searchWL);
-getId('budget').addEventListener('input',function(){try{localStorage.setItem('fb',this.value)}catch(e){}});
+$('sort').addEventListener('change',loadData);
+$('count').addEventListener('change',loadData);
+$('refresh').addEventListener('click',loadData);
 
 loadData();
 </script>
