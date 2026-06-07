@@ -508,7 +508,7 @@ async function updateKlines(){
     return fetchKlines(sym).then(d=>{if(d){S.klines[sym]=d;if(S.symbols[sym]){var cr=calcScore(d);S.symbols[sym].predictScore=cr.s;S.symbols[sym].scoreDetail=cr.d}}}).finally(()=>S.klineFetching.delete(sym));
   }));
   $('klineCount').textContent=Object.keys(S.klines).length;
-  render();
+  if(Object.keys(S.symbols).length>0)render();
 }
 
 function spark(sym){
